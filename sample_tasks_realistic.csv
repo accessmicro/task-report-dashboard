@@ -1,0 +1,26 @@
+﻿Task ID,Assignee,Story point,Name,Labels,Module Name,Status
+PROJ-1284,Nguyen Van An,5,Fix payment retry timeout,"W08,W09",Billing,in progress
+PROJ-1285,Tran Minh Chau,3,Add VAT breakdown on invoice,W09,Billing,done
+PROJ-1286,Le Hoang Phuc,4,Refactor token refresh flow,"W08,W09",Auth,open
+PROJ-1287,Vo Gia Huy,5,Implement SSO login callback,W10,Auth,in progress
+PROJ-1288,Pham Quynh Nhu,2,Optimize checkout validation rules,W10,Checkout,done
+PROJ-1289,Do Thanh Son,4,Support guest cart merge,"W10,W11",Checkout,open
+PROJ-1290,Bui Khanh Linh,3,Queue email notification retries,"W09,W10",Notification,in progress
+PROJ-1291,Dang Thu Trang,2,Add push template for promotions,W11,Notification,done
+PROJ-1292,Hoang Duc Minh,4,Daily KPI export endpoint,"W11,W12",Reporting,in progress
+PROJ-1293,Phan Ngoc Bich,5,Create weekly SLA dashboard,W12,Reporting,open
+PROJ-1294,Nguyen Van An,3,Fix duplicate webhook processing,W08,Core API,done
+PROJ-1295,Tran Minh Chau,2,Improve API rate-limit logging,W09,Core API,in progress
+PROJ-1296,Le Hoang Phuc,5,Add idempotency key middleware,W10,Core API,open
+PROJ-1297,Vo Gia Huy,2,Password reset audit trail,W11,Auth,done
+PROJ-1298,Pham Quynh Nhu,4,Checkout coupon edge-case handling,"W11,W12",Checkout,in progress
+PROJ-1299,Do Thanh Son,3,Retry dead-letter processor,W12,Notification,open
+PROJ-1300,Hoang Duc Minh,2,Report export pagination,"W12,W13",Reporting,done
+PROJ-1301,Phan Ngoc Bich,1,API contract test cleanup,W13,Core API,in progress
+PROJ-1302,Bui Khanh Linh,5,Enable 2FA recovery code flow,W13,Auth,open
+PROJ-1303,Dang Thu Trang,2,Invoice PDF font embedding fix,"W13,W14",Billing,done
+PROJ-1304,Nguyen Van An,3,Track conversion funnel event,W14,Reporting,in progress
+PROJ-1305,Tran Minh Chau,4,Handle stale cart clean-up batch,W14,Checkout,open
+PROJ-1306,Le Hoang Phuc,3,OTP brute-force protection,"W14,W15",Auth,done
+PROJ-1307,Bui Khanh Linh,4,Notification preference migration,W15,Notification,in progress
+PROJ-1308,Do Thanh Son,5,Billing reconciliation script,W15,Billing,open
