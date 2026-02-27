@@ -210,7 +210,7 @@ export default function App() {
   const [rawRows, setRawRows] = useState<RawRow[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [error, setError] = useState("");
-  const [copied, setCopied] = useState("");
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [now, setNow] = useState(new Date());
   const [activeTab, setActiveTab] = useState<"main" | "manager">("main");
 
@@ -233,7 +233,7 @@ export default function App() {
 
     try {
       setError("");
-      setCopied("");
+      setToast(null);
       const data = await file.arrayBuffer();
       const workbook = XLSX.read(data, { type: "array" });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -737,12 +737,17 @@ export default function App() {
     [compareSummary]
   );
 
-  const copyCsv = async (kind: "project" | "assignee" | "compare") => {
+  const showToast = (message: string, type: "success" | "error") => {
+    setToast({ message, type });
+    window.setTimeout(() => setToast(null), 2200);
+  };
+
+  const copyCsv = async (kind: "project" | "assignee") => {
     try {
       let csv = "";
       if (kind === "project") {
         csv = toCsv(
-          ["Module Name", "Assignee", "Task ID", "Issue Type", "Summary", "Epic Link", "Status", "Story Points", "Labels", "Prev Week Done But Still Appears"],
+          ["Module Name", "Assignee", "Task ID", "Issue Type", "Summary", "Epic Link", "Status", "Story Points"],
           projectRows.map((r) => [
             r.module,
             r.assignee,
@@ -751,57 +756,27 @@ export default function App() {
             r.taskName,
             r.epicLink,
             r.status,
-            r.storyPoint,
-            r.weeks,
-            r.prevDoneStillAppear ? "YES" : "NO"
+            r.storyPoint
           ])
         );
       }
 
       if (kind === "assignee") {
         csv = toCsv(
-          ["Assignee", "C1", "C2", "C3", "C4", "C5", "Total"],
-          assigneeRows.map((r) => [r.assignee, r.point1, r.point2, r.point3, r.point4, r.point5, r.total])
-        );
-      }
-
-      if (kind === "compare") {
-        csv = toCsv(
-          [
-            "Task ID",
-            "Task Name",
-            "Module Name",
-            "Assignee",
-            `Status ${compareWeekA}`,
-            `Status ${compareWeekB}`,
-            "Transition",
-            "Invalid Done Both Weeks",
-            "Not Done + Missing Next Label"
-          ],
-          compareRows.map((r) => [
-            r.taskId,
-            r.taskName,
-            r.module,
-            r.assignee,
-            r.statusA,
-            r.statusB,
-            r.transition,
-            r.invalidDoneBoth ? "YES" : "NO",
-            r.missingNextWeekLabelNeedUpdate ? "YES" : "NO"
-          ])
+          ["Assignee", "C1", "C2", "C3", "C4", "C5"],
+          assigneeRows.map((r) => [r.assignee, r.point1, r.point2, r.point3, r.point4, r.point5])
         );
       }
 
       await navigator.clipboard.writeText(csv);
-      setCopied(
+      showToast(
         kind === "project"
           ? "CSV copied: project view"
-          : kind === "assignee"
-            ? "CSV copied: assignee view"
-            : "CSV copied: week comparison"
+          : "CSV copied: assignee view",
+        "success"
       );
     } catch {
-      setCopied("Copy failed. Please check clipboard permission.");
+      showToast("Copy failed. Please check clipboard permission.", "error");
     }
   };
 
@@ -863,7 +838,6 @@ export default function App() {
           </div>
         </details>
         {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
-        {copied && <p className="mt-3 text-sm text-emerald-700">{copied}</p>}
       </section>
 
       <section className="mb-5 flex gap-2">
@@ -1184,7 +1158,6 @@ export default function App() {
                 </Select>
               </div>
             </div>
-            <Button variant="outline" onClick={() => copyCsv("compare")}>Copy CSV</Button>
           </div>
 
           <div className="mb-3 text-sm text-muted-foreground">
@@ -1377,6 +1350,12 @@ export default function App() {
       )}
 
       {!rawRows.length && !error && <div className="py-8 text-center text-sm text-muted-foreground">Upload a file to start analysis.</div>}
+
+      {toast && (
+        <div className={`fixed bottom-6 right-6 z-[100] rounded-lg px-4 py-2 text-sm text-white shadow-lg ${toast.type === "success" ? "bg-emerald-600" : "bg-red-600"}`}>
+          {toast.message}
+        </div>
+      )}
     </main>
   );
 }
