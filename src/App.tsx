@@ -1,13 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { type ReactNode, useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
-import { AlertTriangle, Circle, Upload } from "lucide-react";
+import { AlertTriangle, ChevronDown, Circle, Upload } from "lucide-react";
 import { Bar, BarChart, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 
 type RawRow = Record<string, string | number>;
 type Status = "open" | "inprogress" | "done" | "other";
@@ -180,14 +179,39 @@ function StatusBadge({ status }: { status: Status | "-" }) {
   );
 }
 
+function AccordionSection({
+  title,
+  description,
+  children
+}: {
+  title: string;
+  description: string;
+  children: ReactNode;
+}) {
+  return (
+    <details open className="group overflow-hidden rounded-2xl border border-white/50 bg-white/70 shadow-[0_15px_45px_rgba(50,50,93,0.09)] backdrop-blur-xl">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 border-b bg-white px-5 py-4">
+        <div>
+          <div className="text-base font-semibold">{title}</div>
+          <div className="text-sm text-muted-foreground">{description}</div>
+        </div>
+        <ChevronDown className="h-5 w-5 text-muted-foreground transition-transform group-open:rotate-180" />
+      </summary>
+      <div className="p-5">{children}</div>
+    </details>
+  );
+}
+
 export default function App() {
   const [rawRows, setRawRows] = useState<RawRow[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [error, setError] = useState("");
   const [copied, setCopied] = useState("");
   const [now, setNow] = useState(new Date());
+  const [activeTab, setActiveTab] = useState<"main" | "manager">("main");
 
-  const [projectWeekFilter, setProjectWeekFilter] = useState("all");
+  const [projectAllWeeks, setProjectAllWeeks] = useState(true);
+  const [projectWeekFilters, setProjectWeekFilters] = useState<string[]>([]);
   const [projectModuleFilter, setProjectModuleFilter] = useState("all");
   const [projectAssigneeFilter, setProjectAssigneeFilter] = useState("all");
   const [assigneeAllWeeks, setAssigneeAllWeeks] = useState(true);
@@ -220,7 +244,7 @@ export default function App() {
       });
 
       if (!rows.length) {
-        setError("File không có dữ liệu.");
+        setError("The file has no data.");
         setRawRows([]);
         setTasks([]);
         return;
@@ -250,7 +274,7 @@ export default function App() {
       if (!colStatus) missing.push("Status");
 
       if (missing.length) {
-        setError(`Thiếu cột bắt buộc: ${missing.join(", ")}`);
+        setError(`Missing required columns: ${missing.join(", ")}`);
         setRawRows(rows);
         setTasks([]);
         return;
@@ -274,7 +298,8 @@ export default function App() {
 
       setRawRows(rows);
       setTasks(parsedTasks);
-      setProjectWeekFilter("all");
+      setProjectAllWeeks(true);
+      setProjectWeekFilters([]);
       setProjectModuleFilter("all");
       setProjectAssigneeFilter("all");
       setAssigneeAllWeeks(true);
@@ -285,7 +310,7 @@ export default function App() {
       setCompareWeekA(sortedWeeks.length >= 2 ? sortedWeeks[sortedWeeks.length - 2] : sortedWeeks[0] ?? "");
       setCompareWeekB(sortedWeeks.length >= 1 ? sortedWeeks[sortedWeeks.length - 1] : "");
     } catch {
-      setError("Không thể đọc file. Vui lòng kiểm tra lại định dạng Excel/CSV.");
+      setError("Unable to read file. Please check Excel/CSV format.");
       setRawRows([]);
       setTasks([]);
     }
@@ -302,21 +327,34 @@ export default function App() {
   const projectModules = useMemo(() => {
     const set = new Set<string>();
     tasks.forEach((task) => {
-      const matchWeek = projectWeekFilter === "all" || task.weeks.includes(projectWeekFilter);
+      const matchWeek =
+        projectAllWeeks ||
+        projectWeekFilters.length === 0 ||
+        task.weeks.some((week) => projectWeekFilters.includes(week));
       if (matchWeek) set.add(task.module);
     });
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [tasks, projectWeekFilter]);
+  }, [tasks, projectAllWeeks, projectWeekFilters]);
 
   const projectAssignees = useMemo(() => {
     const set = new Set<string>();
     tasks.forEach((task) => {
-      const matchWeek = projectWeekFilter === "all" || task.weeks.includes(projectWeekFilter);
+      const matchWeek =
+        projectAllWeeks ||
+        projectWeekFilters.length === 0 ||
+        task.weeks.some((week) => projectWeekFilters.includes(week));
       const matchModule = projectModuleFilter === "all" || task.module === projectModuleFilter;
       if (matchWeek && matchModule) set.add(task.assignee);
     });
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [tasks, projectWeekFilter, projectModuleFilter]);
+  }, [tasks, projectAllWeeks, projectWeekFilters, projectModuleFilter]);
+
+  const projectWeekSummary = useMemo(() => {
+    if (projectAllWeeks) return "All weeks";
+    if (!projectWeekFilters.length) return "Select weeks";
+    const ordered = allWeeks.filter((week) => projectWeekFilters.includes(week));
+    return ordered.join(", ");
+  }, [projectAllWeeks, projectWeekFilters, allWeeks]);
 
   const projectRows = useMemo(() => {
     const taskStatusByWeek = new Map<string, Map<string, Status>>();
@@ -332,19 +370,22 @@ export default function App() {
       taskStatusByWeek.set(taskKey, prev);
     });
 
-    const prevWeek = projectWeekFilter !== "all" ? previousWeek(projectWeekFilter) : "";
+    const selectedWeeks = projectAllWeeks || projectWeekFilters.length === 0 ? allWeeks : projectWeekFilters;
     const filtered = tasks
       .filter((task) => {
-        const matchWeek = projectWeekFilter === "all" || task.weeks.includes(projectWeekFilter);
+        const matchWeek =
+          selectedWeeks.length === 0 || task.weeks.some((week) => selectedWeeks.includes(week));
         const matchModule = projectModuleFilter === "all" || task.module === projectModuleFilter;
         const matchAssignee = projectAssigneeFilter === "all" || task.assignee === projectAssigneeFilter;
         return matchWeek && matchModule && matchAssignee;
       })
       .map((task) => ({
         task,
-        warning:
-          Boolean(prevWeek) &&
-          (taskStatusByWeek.get(task.taskId || `${task.module}||${task.name}`)?.get(prevWeek) ?? "-") === "done"
+        warning: selectedWeeks.some((week) => {
+          const prevWeek = previousWeek(week);
+          if (!prevWeek) return false;
+          return (taskStatusByWeek.get(task.taskId || `${task.module}||${task.name}`)?.get(prevWeek) ?? "-") === "done";
+        })
       }))
       .sort(
         (a, b) =>
@@ -387,14 +428,14 @@ export default function App() {
         storyPoint: task.storyPoint,
         weeks: task.weeks.join(","),
         prevDoneStillAppear: row.warning,
-        prevWeek,
+        prevWeek: selectedWeeks.map((w) => previousWeek(w)).filter(Boolean).join(","),
         showModule,
         showAssignee,
         moduleRowSpan: moduleCount.get(task.module) ?? 1,
         assigneeRowSpan: assigneeCount.get(assigneeKey) ?? 1
       };
     });
-  }, [tasks, projectWeekFilter, projectModuleFilter, projectAssigneeFilter]);
+  }, [tasks, projectAllWeeks, projectWeekFilters, allWeeks, projectModuleFilter, projectAssigneeFilter]);
 
   const assigneeRows = useMemo(() => {
     const map = new Map<
@@ -431,8 +472,8 @@ export default function App() {
   }, [tasks, assigneeAllWeeks, assigneeWeekFilters]);
 
   const assigneeWeekSummary = useMemo(() => {
-    if (assigneeAllWeeks) return "Tất cả tuần";
-    if (!assigneeWeekFilters.length) return "Chọn tuần";
+    if (assigneeAllWeeks) return "All weeks";
+    if (!assigneeWeekFilters.length) return "Select weeks";
     const ordered = allWeeks.filter((week) => assigneeWeekFilters.includes(week));
     return ordered.join(", ");
   }, [assigneeAllWeeks, assigneeWeekFilters, allWeeks]);
@@ -448,6 +489,7 @@ export default function App() {
       statusB: Status | "-";
       transition: string;
       invalidDoneBoth: boolean;
+      missingNextWeekLabelNeedUpdate: boolean;
     }>;
 
     const taskMap = new Map<
@@ -480,15 +522,17 @@ export default function App() {
         const statusA = task.statusByWeek.get(compareWeekA) ?? "-";
         const statusB = task.statusByWeek.get(compareWeekB) ?? "-";
         const invalidDoneBoth = statusA === "done" && statusB === "done";
+        const missingNextWeekLabelNeedUpdate =
+          statusA !== "-" && statusA !== "done" && statusB === "-";
         const transition =
           statusA === "-" && statusB === "-"
-            ? "Không có dữ liệu ở 2 tuần"
+            ? "No data in both weeks"
             : statusA === "-"
-              ? `Mới xuất hiện ở ${compareWeekB}`
+              ? `New in ${compareWeekB}`
               : statusB === "-"
-                ? `Không còn ở ${compareWeekB}`
+                ? `Missing in ${compareWeekB}`
                 : statusA === statusB
-                  ? "Không đổi"
+                  ? "No change"
                   : `${statusA} -> ${statusB}`;
 
         return {
@@ -500,7 +544,8 @@ export default function App() {
           statusA,
           statusB,
           transition,
-          invalidDoneBoth
+          invalidDoneBoth,
+          missingNextWeekLabelNeedUpdate
         };
       })
       .filter((row) => row.statusA !== "-" || row.statusB !== "-")
@@ -518,6 +563,86 @@ export default function App() {
     const invalidDoneBoth = compareRows.filter((row) => row.invalidDoneBoth).length;
     return { changed, invalidDoneBoth, total: compareRows.length };
   }, [compareRows]);
+
+  const currentWeekInfo = isoWeekInfo(now);
+  const currentWeekCode = `W${twoDigits(currentWeekInfo.week)}`;
+  const currentRange = weekRangeMonToFri(now);
+  const managerPrevWeek = previousWeek(currentWeekCode);
+
+  const managerCurrentWeekTasks = useMemo(
+    () => tasks.filter((task) => task.weeks.includes(currentWeekCode)),
+    [tasks, currentWeekCode]
+  );
+
+  const managerReminderRows = useMemo(() => {
+    const taskMap = new Map<
+      string,
+      { taskId: string; taskName: string; assignee: string; module: string; statusByWeek: Map<string, Status> }
+    >();
+
+    tasks.forEach((task) => {
+      const key = task.taskId || `${task.module}||${task.name}`;
+      const prev =
+        taskMap.get(key) ??
+        { taskId: task.taskId || "-", taskName: task.name || "-", assignee: task.assignee, module: task.module, statusByWeek: new Map<string, Status>() };
+
+      task.weeks.forEach((week) => {
+        const current = prev.statusByWeek.get(week);
+        if (!current || statusIndex(task.status) > statusIndex(current)) {
+          prev.statusByWeek.set(week, task.status);
+        }
+      });
+      taskMap.set(key, prev);
+    });
+
+    return Array.from(taskMap.entries())
+      .map(([taskKey, task]) => {
+        const prevStatus = managerPrevWeek ? task.statusByWeek.get(managerPrevWeek) ?? "-" : "-";
+        const currentStatus = task.statusByWeek.get(currentWeekCode) ?? "-";
+        const doneBoth = prevStatus === "done" && currentStatus === "done";
+        const missingCurrent = prevStatus !== "-" && prevStatus !== "done" && currentStatus === "-";
+        return {
+          taskKey,
+          taskId: task.taskId,
+          taskName: task.taskName,
+          assignee: task.assignee,
+          module: task.module,
+          doneBoth,
+          missingCurrent
+        };
+      })
+      .filter((row) => row.doneBoth || row.missingCurrent)
+      .sort((a, b) => a.module.localeCompare(b.module) || a.assignee.localeCompare(b.assignee) || a.taskId.localeCompare(b.taskId));
+  }, [tasks, currentWeekCode, managerPrevWeek]);
+
+  const managerInProgressMultiWeek = useMemo(() => {
+    const map = new Map<string, { taskId: string; taskName: string; assignee: string; module: string; weeks: string }>();
+    managerCurrentWeekTasks.forEach((task) => {
+      if (task.status !== "inprogress" || task.weeks.length < 2) return;
+      const key = task.taskId || `${task.module}-${task.name}`;
+      map.set(key, {
+        taskId: task.taskId || "-",
+        taskName: task.name || "-",
+        assignee: task.assignee,
+        module: task.module,
+        weeks: task.weeks.join(", ")
+      });
+    });
+    return Array.from(map.values()).sort((a, b) => a.assignee.localeCompare(b.assignee));
+  }, [managerCurrentWeekTasks]);
+
+  const managerWorkloadRows = useMemo(() => {
+    const map = new Map<string, { assignee: string; light: number; medium: number; heavy: number; total: number }>();
+    managerCurrentWeekTasks.forEach((task) => {
+      const prev = map.get(task.assignee) ?? { assignee: task.assignee, light: 0, medium: 0, heavy: 0, total: 0 };
+      if (task.storyPoint <= 2) prev.light += 1;
+      else if (task.storyPoint === 3) prev.medium += 1;
+      else prev.heavy += 1;
+      prev.total += 1;
+      map.set(task.assignee, prev);
+    });
+    return Array.from(map.values()).sort((a, b) => b.total - a.total || a.assignee.localeCompare(b.assignee));
+  }, [managerCurrentWeekTasks]);
 
   const compareGroupedRows = useMemo(() => {
     const moduleCount = new Map<string, number>();
@@ -601,9 +726,9 @@ export default function App() {
 
   const comparePieData = useMemo(
     () => [
-      { name: "Đổi trạng thái", value: compareSummary.changed, color: "#0ea5e9" },
-      { name: "Không đổi", value: Math.max(compareSummary.total - compareSummary.changed, 0), color: "#64748b" },
-      { name: "Done ở cả 2 tuần", value: compareSummary.invalidDoneBoth, color: "#dc2626" }
+      { name: "Status changed", value: compareSummary.changed, color: "#0ea5e9" },
+      { name: "No change", value: Math.max(compareSummary.total - compareSummary.changed, 0), color: "#64748b" },
+      { name: "Done in both", value: compareSummary.invalidDoneBoth, color: "#dc2626" }
     ],
     [compareSummary]
   );
@@ -638,292 +763,151 @@ export default function App() {
 
       if (kind === "compare") {
         csv = toCsv(
-          ["Task ID", "Task Name", "Module Name", "Assignee", `Status ${compareWeekA}`, `Status ${compareWeekB}`, "Transition", "Invalid Done Both Weeks"],
-          compareRows.map((r) => [r.taskId, r.taskName, r.module, r.assignee, r.statusA, r.statusB, r.transition, r.invalidDoneBoth ? "YES" : "NO"])
+          [
+            "Task ID",
+            "Task Name",
+            "Module Name",
+            "Assignee",
+            `Status ${compareWeekA}`,
+            `Status ${compareWeekB}`,
+            "Transition",
+            "Invalid Done Both Weeks",
+            "Not Done + Missing Next Label"
+          ],
+          compareRows.map((r) => [
+            r.taskId,
+            r.taskName,
+            r.module,
+            r.assignee,
+            r.statusA,
+            r.statusB,
+            r.transition,
+            r.invalidDoneBoth ? "YES" : "NO",
+            r.missingNextWeekLabelNeedUpdate ? "YES" : "NO"
+          ])
         );
       }
 
       await navigator.clipboard.writeText(csv);
       setCopied(
         kind === "project"
-          ? "Đã copy CSV: thống kê theo dự án"
+          ? "CSV copied: project view"
           : kind === "assignee"
-            ? "Đã copy CSV: thống kê theo người dùng"
-            : "Đã copy CSV: so sánh 2 tuần"
+            ? "CSV copied: assignee view"
+            : "CSV copied: week comparison"
       );
     } catch {
-      setCopied("Copy CSV thất bại. Hãy kiểm tra quyền clipboard của trình duyệt.");
+      setCopied("Copy failed. Please check clipboard permission.");
     }
   };
 
   const totalTasks = tasks.length;
   const withWeek = tasks.filter((task) => task.weeks.length > 0).length;
-  const currentWeekInfo = isoWeekInfo(now);
-  const currentWeekCode = `W${twoDigits(currentWeekInfo.week)}`;
-  const currentRange = weekRangeMonToFri(now);
 
   return (
-    <main className="mx-auto max-w-7xl p-4 md:p-8">
+    <main className="mx-auto max-w-[1300px] p-4 md:p-8">
       <section className="mb-6 grid gap-4 lg:grid-cols-4">
-        <Card className="lg:col-span-2 border-2 border-primary/40 bg-primary/5">
+        <div className="lg:col-span-2 rounded-3xl border border-cyan-200/70 bg-gradient-to-br from-cyan-500 via-blue-600 to-indigo-700 p-6 text-white shadow-[0_25px_60px_rgba(37,99,235,0.32)]">
+          <div className="mb-3 text-sm uppercase tracking-[0.2em] text-cyan-100">Current Working Week</div>
+          <div className="mb-2 text-5xl font-bold">{currentWeekCode}</div>
+          <div className="text-sm text-cyan-100">
+            {formatDate(currentRange.monday)} - {formatDate(currentRange.friday)} (Mon - Fri)
+          </div>
+          <div className="mt-3 inline-flex rounded-full bg-white/20 px-3 py-1 text-sm">
+            {formatClock(now)} | {formatDate(now)}
+          </div>
+        </div>
+        <Card className="border-0 bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-xl">
           <CardHeader>
-            <CardDescription>Tuần làm việc hiện tại</CardDescription>
-            <CardTitle className="text-4xl text-primary">{currentWeekCode}</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-1 text-sm">
-            <div>
-              Thời gian làm việc: {formatDate(currentRange.monday)} - {formatDate(currentRange.friday)} (Thứ 2 - Thứ 6)
-            </div>
-            <div>
-              Đồng hồ hiện tại: <span className="font-semibold">{formatClock(now)}</span> | {formatDate(now)}
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader>
-            <CardDescription>Total Task</CardDescription>
-            <CardTitle>{totalTasks}</CardTitle>
+            <CardDescription className="text-indigo-100">Total Task</CardDescription>
+            <CardTitle className="text-3xl text-white">{totalTasks}</CardTitle>
           </CardHeader>
         </Card>
-        <Card>
+        <Card className="border-0 bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-xl">
           <CardHeader>
-            <CardDescription>Có tuần hợp lệ</CardDescription>
-            <CardTitle>{withWeek}</CardTitle>
+            <CardDescription className="text-emerald-100">Valid Week Labels</CardDescription>
+            <CardTitle className="text-3xl text-white">{withWeek}</CardTitle>
           </CardHeader>
         </Card>
       </section>
 
       <section className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card><CardHeader><CardDescription>Open</CardDescription><CardTitle className="text-sky-600">{overviewStatus.open}</CardTitle></CardHeader></Card>
-        <Card><CardHeader><CardDescription>In Progress</CardDescription><CardTitle className="text-amber-500">{overviewStatus.inprogress}</CardTitle></CardHeader></Card>
-        <Card><CardHeader><CardDescription>Done</CardDescription><CardTitle className="text-emerald-600">{overviewStatus.done}</CardTitle></CardHeader></Card>
-        <Card><CardHeader><CardDescription>Other</CardDescription><CardTitle className="text-slate-500">{overviewStatus.other}</CardTitle></CardHeader></Card>
+        <Card className="border-0 bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-lg"><CardHeader><CardDescription className="text-sky-100">Open</CardDescription><CardTitle className="text-white">{overviewStatus.open}</CardTitle></CardHeader></Card>
+        <Card className="border-0 bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg"><CardHeader><CardDescription className="text-amber-100">In Progress</CardDescription><CardTitle className="text-white">{overviewStatus.inprogress}</CardTitle></CardHeader></Card>
+        <Card className="border-0 bg-gradient-to-br from-emerald-500 to-green-600 text-white shadow-lg"><CardHeader><CardDescription className="text-emerald-100">Done</CardDescription><CardTitle className="text-white">{overviewStatus.done}</CardTitle></CardHeader></Card>
+        <Card className="border-0 bg-gradient-to-br from-slate-500 to-slate-700 text-white shadow-lg"><CardHeader><CardDescription className="text-slate-100">Other</CardDescription><CardTitle className="text-white">{overviewStatus.other}</CardTitle></CardHeader></Card>
       </section>
 
-      <section className="mb-6 rounded-2xl border bg-card/80 p-6 backdrop-blur-sm">
+      <section className="mb-6 rounded-2xl border border-white/60 bg-white/75 p-5 shadow-[0_12px_40px_rgba(15,23,42,0.08)] backdrop-blur-xl">
         <div className="mb-2 flex items-center gap-2">
           <Upload className="h-5 w-5 text-primary" />
           <h1 className="text-2xl font-semibold tracking-tight">Task Statistics Dashboard</h1>
         </div>
-        <p className="mb-4 text-sm text-muted-foreground">
-          Bộ lọc đơn giản theo tuần để thống kê theo dự án, người dùng, và độ khó task.
-        </p>
-
-        <div className="grid gap-4 md:grid-cols-1">
-          <div className="space-y-2">
-            <Label htmlFor="file">File Excel/CSV</Label>
-            <Input id="file" type="file" accept=".xlsx,.xls,.csv" onChange={(e) => handleFileUpload(e.target.files?.[0] ?? null)} />
-          </div>
+        <p className="mb-4 text-sm text-muted-foreground">Upload Excel/CSV, then use the filter accordions below for analysis.</p>
+        <div className="space-y-2">
+          <Label htmlFor="file">File Excel/CSV</Label>
+          <Input id="file" type="file" accept=".xlsx,.xls,.csv" onChange={(e) => handleFileUpload(e.target.files?.[0] ?? null)} />
         </div>
-
         {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
         {copied && <p className="mt-3 text-sm text-emerald-700">{copied}</p>}
       </section>
 
-      <section className="mb-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>1. Lọc theo dự án theo từng tuần</CardTitle>
-            <CardDescription>Nhóm theo dự án - người dùng - từng task (rowspan/colspan)</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <div className="grid w-full max-w-4xl grid-cols-1 gap-3 sm:grid-cols-3">
-                <div className="space-y-2">
-                  <Label>Tuần</Label>
-                  <Select value={projectWeekFilter} onValueChange={setProjectWeekFilter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Chọn tuần" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tất cả tuần</SelectItem>
-                      {allWeeks.map((week) => (
-                        <SelectItem key={week} value={week}>
-                          {week}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Dự án (optional)</Label>
-                  <Select
-                    value={projectModuleFilter}
-                    onValueChange={(value) => {
-                      setProjectModuleFilter(value);
-                      setProjectAssigneeFilter("all");
-                    }}
-                  >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Tất cả dự án" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tất cả dự án</SelectItem>
-                      {projectModules.map((module) => (
-                        <SelectItem key={module} value={module}>
-                          {module}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Assignee (optional)</Label>
-                  <Select value={projectAssigneeFilter} onValueChange={setProjectAssigneeFilter}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Tất cả assignee" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Tất cả assignee</SelectItem>
-                      {projectAssignees.map((assignee) => (
-                        <SelectItem key={assignee} value={assignee}>
-                          {assignee}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <Button variant="outline" onClick={() => copyCsv("project")}>Copy CSV</Button>
-            </div>
-
-            <div className="mb-4 grid gap-4 lg:grid-cols-[320px,1fr]">
-              <div className="h-56 rounded-md border p-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={projectPieData} dataKey="value" nameKey="name" outerRadius={78} innerRadius={40}>
-                      {projectPieData.map((entry) => (
-                        <Cell key={`project-${entry.name}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="h-56 rounded-md border p-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={projectAssigneeChartData}>
-                    <XAxis dataKey="assignee" tick={{ fontSize: 10 }} interval={0} angle={-25} textAnchor="end" height={70} />
-                    <YAxis allowDecimals={false} />
-                    <Tooltip />
-                    <Bar dataKey="count" fill="#0ea5e9" name="Task count" radius={[4, 4, 0, 0]} />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-
-            <div className="max-h-[560px] overflow-y-auto rounded-md border">
-              <table className="w-full border-collapse text-sm">
-                <thead>
-                  <tr>
-                    <th rowSpan={2} className="sticky top-0 z-30 bg-muted/80 px-2 py-2 text-left font-medium text-muted-foreground">Module Name</th>
-                    <th rowSpan={2} className="sticky top-0 z-30 bg-muted/80 px-2 py-2 text-left font-medium text-muted-foreground">Assignee</th>
-                    <th colSpan={6} className="sticky top-0 z-30 bg-muted/80 px-2 py-2 text-center font-medium text-muted-foreground">Task Details</th>
-                  </tr>
-                  <tr>
-                    <th className="sticky top-9 z-30 bg-muted/80 px-2 py-2 text-left font-medium text-muted-foreground">Task ID</th>
-                    <th className="sticky top-9 z-30 bg-muted/80 px-2 py-2 text-left font-medium text-muted-foreground">Task Name</th>
-                    <th className="sticky top-9 z-30 bg-muted/80 px-2 py-2 text-left font-medium text-muted-foreground">Status</th>
-                    <th className="sticky top-9 z-30 bg-muted/80 px-2 py-2 text-left font-medium text-muted-foreground">Story Point</th>
-                    <th className="sticky top-9 z-30 bg-muted/80 px-2 py-2 text-left font-medium text-muted-foreground">Weeks</th>
-                    <th className="sticky top-9 z-30 bg-muted/80 px-2 py-2 text-left font-medium text-muted-foreground">Cảnh báo</th>
-                  </tr>
-                </thead>
-                <tbody>
-                {projectRows.map((row) => (
-                  <tr key={`${row.module}-${row.assignee}-${row.taskKey}`} className="border-b transition-colors hover:bg-muted/50">
-                    {row.showModule && (
-                      <td rowSpan={row.moduleRowSpan} className="p-2 align-top font-medium">
-                        {row.module}
-                      </td>
-                    )}
-                    {row.showAssignee && (
-                      <td rowSpan={row.assigneeRowSpan} className="p-2 align-top">
-                        {row.assignee}
-                      </td>
-                    )}
-                    <td className="p-2">
-                      {row.taskUrl ? (
-                        <a
-                          href={row.taskUrl}
-                          target="_blank"
-                          rel="noreferrer"
-                          className="text-primary underline underline-offset-2"
-                        >
-                          {row.taskId}
-                        </a>
-                      ) : (
-                        row.taskId
-                      )}
-                    </td>
-                    <td className="p-2">{row.taskName}</td>
-                    <td className="p-2">
-                      <StatusBadge status={row.status} />
-                    </td>
-                    <td className="p-2">{row.storyPoint}</td>
-                    <td className="p-2">{row.weeks}</td>
-                    <td className="p-2">
-                      {row.prevDoneStillAppear ? (
-                        <span
-                          title={`Task đã done ở ${row.prevWeek} nhưng vẫn xuất hiện ở ${projectWeekFilter}`}
-                          className="inline-flex items-center gap-1 text-amber-600"
-                        >
-                          <AlertTriangle className="h-4 w-4" />
-                          done tuần trước
-                        </span>
-                      ) : (
-                        "-"
-                      )}
-                    </td>
-                  </tr>
-                ))}
-                </tbody>
-              </table>
-            </div>
-          </CardContent>
-        </Card>
+      <section className="mb-5 flex gap-2">
+        <button
+          type="button"
+          onClick={() => setActiveTab("main")}
+          className={`rounded-full px-4 py-2 text-sm font-medium ${activeTab === "main" ? "bg-primary text-white" : "bg-white text-slate-700 border"}`}
+        >
+          Main Dashboard
+        </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("manager")}
+          className={`rounded-full px-4 py-2 text-sm font-medium ${activeTab === "manager" ? "bg-primary text-white" : "bg-white text-slate-700 border"}`}
+        >
+          Manager View
+        </button>
       </section>
 
-      <section className="mb-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>2. Người dùng làm bao nhiêu task theo độ khó</CardTitle>
-            <CardDescription>Chọn nhiều tuần hoặc tất cả, mỗi người có bao nhiêu task ở từng độ khó</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <div className="w-full max-w-xs space-y-2">
-                <Label>Tuần (multi-select)</Label>
+      {activeTab === "main" ? (
+      <section className="space-y-5">
+        <AccordionSection
+          title="1. Project Filter by Week"
+          description="Grouped by project -> assignee -> task (rowspan/colspan)"
+        >
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div className="grid w-full max-w-4xl grid-cols-1 gap-3 sm:grid-cols-3">
+              <div className="space-y-2">
+                <Label>Weeks (multi-select)</Label>
                 <details className="group relative">
                   <summary className="flex h-10 cursor-pointer list-none items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm">
-                    <span className="truncate">{assigneeWeekSummary}</span>
+                    <span className="truncate">{projectWeekSummary}</span>
                   </summary>
                   <div className="absolute z-20 mt-2 w-full rounded-md border bg-card p-3 shadow-md">
                     <label className="mb-2 flex items-center gap-2 text-sm">
                       <input
                         type="checkbox"
-                        checked={assigneeAllWeeks}
+                        checked={projectAllWeeks}
                         onChange={(e) => {
                           if (e.target.checked) {
-                            setAssigneeAllWeeks(true);
-                            setAssigneeWeekFilters([]);
+                            setProjectAllWeeks(true);
+                            setProjectWeekFilters([]);
                           } else {
-                            setAssigneeAllWeeks(false);
+                            setProjectAllWeeks(false);
                           }
                         }}
                       />
-                      Tất cả tuần
+                      All weeks
                     </label>
                     <div className="max-h-44 space-y-1 overflow-auto border-t pt-2">
                       {allWeeks.map((week) => (
                         <label key={week} className="flex items-center gap-2 text-sm">
                           <input
                             type="checkbox"
-                            checked={assigneeWeekFilters.includes(week)}
+                            checked={projectWeekFilters.includes(week)}
                             onChange={(e) => {
-                              setAssigneeAllWeeks(false);
-                              setAssigneeWeekFilters((prev) =>
+                              setProjectAllWeeks(false);
+                              setProjectWeekFilters((prev) =>
                                 e.target.checked ? [...prev, week] : prev.filter((w) => w !== week)
                               );
                             }}
@@ -935,185 +919,450 @@ export default function App() {
                   </div>
                 </details>
               </div>
-              <Button variant="outline" onClick={() => copyCsv("assignee")}>Copy CSV</Button>
-            </div>
-
-            <div className="grid gap-4 lg:grid-cols-[260px,1fr]">
-              <div className="h-64 rounded-md border p-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={assigneePieData} dataKey="value" nameKey="name" outerRadius={78} innerRadius={40}>
-                      {assigneePieData.map((entry) => (
-                        <Cell key={`assignee-${entry.name}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
+              <div className="space-y-2">
+                <Label>Project (optional)</Label>
+                <Select
+                  value={projectModuleFilter}
+                  onValueChange={(value) => {
+                    setProjectModuleFilter(value);
+                    setProjectAssigneeFilter("all");
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="All projects" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All projects</SelectItem>
+                    {projectModules.map((module) => (
+                      <SelectItem key={module} value={module}>
+                        {module}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-
-              <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Assignee</TableHead>
-                  <TableHead>C1</TableHead>
-                  <TableHead>C2</TableHead>
-                  <TableHead>C3</TableHead>
-                  <TableHead>C4</TableHead>
-                  <TableHead>C5</TableHead>
-                  <TableHead>Total</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {assigneeRows.map((row) => (
-                  <TableRow key={row.assignee}>
-                    <TableCell>{row.assignee}</TableCell>
-                    <TableCell>{displayCount(row.point1)}</TableCell>
-                    <TableCell>{displayCount(row.point2)}</TableCell>
-                    <TableCell>{displayCount(row.point3)}</TableCell>
-                    <TableCell>{displayCount(row.point4)}</TableCell>
-                    <TableCell>{displayCount(row.point5)}</TableCell>
-                    <TableCell>{displayCount(row.total)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-              </Table>
-            </div>
-          </CardContent>
-        </Card>
-      </section>
-
-      <section>
-        <Card>
-          <CardHeader>
-            <CardTitle>3. So sánh chuyển trạng thái giữa 2 tuần</CardTitle>
-            <CardDescription>
-              So sánh theo Task ID giữa 2 tuần gần nhau và cảnh báo task bị done ở cả 2 tuần
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-              <div className="grid w-full max-w-xl grid-cols-1 gap-3 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label>Tuần A</Label>
-                  <Select value={compareWeekA || "__none__"} onValueChange={(v) => setCompareWeekA(v === "__none__" ? "" : v)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Chọn tuần A" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">Chưa chọn</SelectItem>
-                      {allWeeks.map((week) => (
-                        <SelectItem key={`a-${week}`} value={week}>
-                          {week}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label>Tuần B</Label>
-                  <Select value={compareWeekB || "__none__"} onValueChange={(v) => setCompareWeekB(v === "__none__" ? "" : v)}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Chọn tuần B" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="__none__">Chưa chọn</SelectItem>
-                      {allWeeks.map((week) => (
-                        <SelectItem key={`b-${week}`} value={week}>
-                          {week}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-              <Button variant="outline" onClick={() => copyCsv("compare")}>Copy CSV</Button>
-            </div>
-
-            <div className="mb-3 text-sm text-muted-foreground">
-              Tổng task so sánh: {compareSummary.total} | Task có thay đổi: {compareSummary.changed} | Cảnh báo done-done: {compareSummary.invalidDoneBoth}
-            </div>
-
-            <div className="mb-5 grid gap-4 lg:grid-cols-[260px,1fr]">
-              <div className="h-64 rounded-md border p-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <PieChart>
-                    <Pie data={comparePieData} dataKey="value" nameKey="name" outerRadius={78} innerRadius={40}>
-                      {comparePieData.map((entry) => (
-                        <Cell key={`compare-${entry.name}`} fill={entry.color} />
-                      ))}
-                    </Pie>
-                    <Tooltip />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="grid content-start gap-2 rounded-md border p-4 text-sm">
-                <div className="font-medium">Tổng quan so sánh</div>
-                <div>Đổi trạng thái: <span className="font-semibold">{compareSummary.changed}</span></div>
-                <div>Không đổi: <span className="font-semibold">{Math.max(compareSummary.total - compareSummary.changed, 0)}</span></div>
-                <div>Done ở cả 2 tuần: <span className="font-semibold text-red-600">{compareSummary.invalidDoneBoth}</span></div>
+              <div className="space-y-2">
+                <Label>Assignee (optional)</Label>
+                <Select value={projectAssigneeFilter} onValueChange={setProjectAssigneeFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="All assignees" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All assignees</SelectItem>
+                    {projectAssignees.map((assignee) => (
+                      <SelectItem key={assignee} value={assignee}>
+                        {assignee}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
+            <Button variant="outline" onClick={() => copyCsv("project")}>Copy CSV</Button>
+          </div>
 
-            {compareWeekA && compareWeekB && compareWeekA === compareWeekB && (
-              <p className="mb-3 text-sm text-amber-700">Hãy chọn 2 tuần khác nhau để so sánh đúng.</p>
-            )}
+          <div className="mb-4 grid gap-4 lg:grid-cols-[320px,1fr]">
+            <div className="h-56 rounded-xl border border-white/70 bg-white p-2 shadow-sm">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={projectPieData} dataKey="value" nameKey="name" outerRadius={78} innerRadius={40}>
+                    {projectPieData.map((entry) => (
+                      <Cell key={`project-${entry.name}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="h-56 rounded-xl border border-white/70 bg-white p-2 shadow-sm">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={projectAssigneeChartData}>
+                  <XAxis dataKey="assignee" tick={{ fontSize: 10 }} interval={0} angle={-25} textAnchor="end" height={70} />
+                  <YAxis allowDecimals={false} />
+                  <Tooltip />
+                  <Bar dataKey="count" fill="#0ea5e9" name="Task count" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
 
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Module</TableHead>
-                  <TableHead>Assignee</TableHead>
-                  <TableHead>Task ID</TableHead>
-                  <TableHead>Task Name</TableHead>
-                  <TableHead>Status {compareWeekA || "A"}</TableHead>
-                  <TableHead>Status {compareWeekB || "B"}</TableHead>
-                  <TableHead>Chuyển biến</TableHead>
-                  <TableHead>Cảnh báo</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {compareGroupedRows.map((row) => (
-                  <TableRow key={row.taskKey}>
+          <div className="max-h-[560px] overflow-y-auto rounded-xl border border-white/70 bg-white shadow-sm">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr>
+                  <th rowSpan={2} className="sticky top-0 z-30 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Module Name</th>
+                  <th rowSpan={2} className="sticky top-0 z-30 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Assignee</th>
+                  <th colSpan={6} className="sticky top-0 z-30 bg-slate-100 px-2 py-2 text-center font-medium text-slate-700">Task Details</th>
+                </tr>
+                <tr>
+                  <th className="sticky top-9 z-30 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Task ID</th>
+                  <th className="sticky top-9 z-30 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Task Name</th>
+                  <th className="sticky top-9 z-30 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Status</th>
+                  <th className="sticky top-9 z-30 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Story Point</th>
+                  <th className="sticky top-9 z-30 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Weeks</th>
+                  <th className="sticky top-9 z-30 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Warning</th>
+                </tr>
+              </thead>
+              <tbody>
+                {projectRows.map((row) => (
+                  <tr key={`${row.module}-${row.assignee}-${row.taskKey}`} className="border-b transition-colors hover:bg-slate-50">
                     {row.showModule && (
-                      <TableCell rowSpan={row.moduleRowSpan} className="align-top font-medium">
-                        {row.module}
-                      </TableCell>
+                      <td rowSpan={row.moduleRowSpan} className="p-2 align-top font-medium">{row.module}</td>
                     )}
                     {row.showAssignee && (
-                      <TableCell rowSpan={row.assigneeRowSpan} className="align-top">
-                        {row.assignee}
-                      </TableCell>
+                      <td rowSpan={row.assigneeRowSpan} className="p-2 align-top">{row.assignee}</td>
                     )}
-                    <TableCell>{row.taskId}</TableCell>
-                    <TableCell>{row.taskName}</TableCell>
-                    <TableCell>
-                      <StatusBadge status={row.statusA} />
-                    </TableCell>
-                    <TableCell>
-                      <StatusBadge status={row.statusB} />
-                    </TableCell>
-                    <TableCell>{row.transition}</TableCell>
-                    <TableCell>{row.invalidDoneBoth ? "Task done ở cả 2 tuần (không hợp lệ)" : "-"}</TableCell>
-                  </TableRow>
+                    <td className="p-2">
+                      {row.taskUrl ? (
+                        <a href={row.taskUrl} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">{row.taskId}</a>
+                      ) : row.taskId}
+                    </td>
+                    <td className="p-2">{row.taskName}</td>
+                    <td className="p-2"><StatusBadge status={row.status} /></td>
+                    <td className="p-2">{row.storyPoint}</td>
+                    <td className="p-2">{row.weeks}</td>
+                    <td className="p-2">
+                      {row.prevDoneStillAppear ? (
+                        <span title={`Task was done in previous week(s) (${row.prevWeek}) but still appears in selected weeks`} className="inline-flex items-center gap-1 text-amber-600">
+                          <AlertTriangle className="h-4 w-4" />
+                          done last week
+                        </span>
+                      ) : "-"}
+                    </td>
+                  </tr>
                 ))}
-              </TableBody>
-            </Table>
+              </tbody>
+            </table>
+          </div>
+        </AccordionSection>
 
-            {!compareRows.length && (
-              <div className="py-5 text-center text-sm text-muted-foreground">
-                Chưa có dữ liệu so sánh cho 2 tuần đã chọn.
+        <AccordionSection
+          title="2. Assignee Workload by Difficulty"
+          description="Select multiple weeks or all weeks to count tasks by difficulty per assignee"
+        >
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div className="w-full max-w-xs space-y-2">
+              <Label>Weeks (multi-select)</Label>
+              <details className="group relative">
+                <summary className="flex h-10 cursor-pointer list-none items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm">
+                  <span className="truncate">{assigneeWeekSummary}</span>
+                </summary>
+                <div className="absolute z-20 mt-2 w-full rounded-md border bg-card p-3 shadow-md">
+                  <label className="mb-2 flex items-center gap-2 text-sm">
+                    <input
+                      type="checkbox"
+                      checked={assigneeAllWeeks}
+                      onChange={(e) => {
+                        if (e.target.checked) {
+                          setAssigneeAllWeeks(true);
+                          setAssigneeWeekFilters([]);
+                        } else {
+                          setAssigneeAllWeeks(false);
+                        }
+                      }}
+                    />
+                    All weeks
+                  </label>
+                  <div className="max-h-44 space-y-1 overflow-auto border-t pt-2">
+                    {allWeeks.map((week) => (
+                      <label key={week} className="flex items-center gap-2 text-sm">
+                        <input
+                          type="checkbox"
+                          checked={assigneeWeekFilters.includes(week)}
+                          onChange={(e) => {
+                            setAssigneeAllWeeks(false);
+                            setAssigneeWeekFilters((prev) => (e.target.checked ? [...prev, week] : prev.filter((w) => w !== week)));
+                          }}
+                        />
+                        {week}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+              </details>
+            </div>
+            <Button variant="outline" onClick={() => copyCsv("assignee")}>Copy CSV</Button>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[260px,1fr]">
+            <div className="h-64 rounded-xl border border-white/70 bg-white p-2 shadow-sm">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={assigneePieData} dataKey="value" nameKey="name" outerRadius={78} innerRadius={40}>
+                    {assigneePieData.map((entry) => (
+                      <Cell key={`assignee-${entry.name}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+
+            <div className="max-h-[460px] overflow-y-auto rounded-xl border border-white/70 bg-white shadow-sm">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr>
+                    <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Assignee</th>
+                    <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">C1</th>
+                    <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">C2</th>
+                    <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">C3</th>
+                    <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">C4</th>
+                    <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">C5</th>
+                    <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Total</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {assigneeRows.map((row) => (
+                    <tr key={row.assignee} className="border-b transition-colors hover:bg-slate-50">
+                      <td className="p-2">{row.assignee}</td>
+                      <td className="p-2">{displayCount(row.point1)}</td>
+                      <td className="p-2">{displayCount(row.point2)}</td>
+                      <td className="p-2">{displayCount(row.point3)}</td>
+                      <td className="p-2">{displayCount(row.point4)}</td>
+                      <td className="p-2">{displayCount(row.point5)}</td>
+                      <td className="p-2">{displayCount(row.total)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </AccordionSection>
+
+        <AccordionSection
+          title="3. Status Change Between 2 Weeks"
+          description="Compare task status by Task ID across 2 nearby weeks and detect anomalies"
+        >
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <div className="grid w-full max-w-xl grid-cols-1 gap-3 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label>Week A</Label>
+                <Select value={compareWeekA || "__none__"} onValueChange={(v) => setCompareWeekA(v === "__none__" ? "" : v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select week A" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Not selected</SelectItem>
+                    {allWeeks.map((week) => (
+                      <SelectItem key={`a-${week}`} value={week}>
+                        {week}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </section>
+              <div className="space-y-2">
+                <Label>Week B</Label>
+                <Select value={compareWeekB || "__none__"} onValueChange={(v) => setCompareWeekB(v === "__none__" ? "" : v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select week B" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">Not selected</SelectItem>
+                    {allWeeks.map((week) => (
+                      <SelectItem key={`b-${week}`} value={week}>
+                        {week}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <Button variant="outline" onClick={() => copyCsv("compare")}>Copy CSV</Button>
+          </div>
 
-      {!rawRows.length && !error && (
-        <div className="py-8 text-center text-sm text-muted-foreground">Upload file để bắt đầu thống kê.</div>
+          <div className="mb-3 text-sm text-muted-foreground">
+            Total compared tasks: {compareSummary.total} | Changed tasks: {compareSummary.changed} | Done-done warnings: {compareSummary.invalidDoneBoth}
+          </div>
+
+          <div className="mb-5 grid gap-4 lg:grid-cols-[260px,1fr]">
+            <div className="h-64 rounded-xl border border-white/70 bg-white p-2 shadow-sm">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={comparePieData} dataKey="value" nameKey="name" outerRadius={78} innerRadius={40}>
+                    {comparePieData.map((entry) => (
+                      <Cell key={`compare-${entry.name}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="grid content-start gap-2 rounded-xl border border-white/70 bg-white p-4 text-sm shadow-sm">
+              <div className="font-medium">Comparison Summary</div>
+              <div>Status changed: <span className="font-semibold">{compareSummary.changed}</span></div>
+              <div>No change: <span className="font-semibold">{Math.max(compareSummary.total - compareSummary.changed, 0)}</span></div>
+              <div>Done in both weeks: <span className="font-semibold text-red-600">{compareSummary.invalidDoneBoth}</span></div>
+            </div>
+          </div>
+
+          {compareWeekA && compareWeekB && compareWeekA === compareWeekB && (
+            <p className="mb-3 text-sm text-amber-700">Please select 2 different weeks for a valid comparison.</p>
+          )}
+
+          <div className="max-h-[520px] overflow-y-auto rounded-xl border border-white/70 bg-white shadow-sm">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr>
+                  <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Module</th>
+                  <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Assignee</th>
+                  <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Task ID</th>
+                  <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Task Name</th>
+                  <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Status {compareWeekA || "A"}</th>
+                  <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Status {compareWeekB || "B"}</th>
+                  <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Transition</th>
+                  <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Warning</th>
+                </tr>
+              </thead>
+              <tbody>
+                {compareGroupedRows.map((row) => (
+                  <tr key={row.taskKey} className="border-b transition-colors hover:bg-slate-50">
+                    {row.showModule && (
+                      <td rowSpan={row.moduleRowSpan} className="p-2 align-top font-medium">{row.module}</td>
+                    )}
+                    {row.showAssignee && (
+                      <td rowSpan={row.assigneeRowSpan} className="p-2 align-top">{row.assignee}</td>
+                    )}
+                    <td className="p-2">{row.taskId}</td>
+                    <td className="p-2">{row.taskName}</td>
+                    <td className="p-2"><StatusBadge status={row.statusA} /></td>
+                    <td className="p-2"><StatusBadge status={row.statusB} /></td>
+                    <td className="p-2">{row.transition}</td>
+                    <td className="p-2">
+                      {row.invalidDoneBoth
+                        ? "Task done in both weeks (invalid)"
+                        : row.missingNextWeekLabelNeedUpdate
+                          ? "Not done, missing next-week label"
+                          : "-"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {!compareRows.length && <div className="py-5 text-center text-sm text-muted-foreground">No comparison data for selected weeks.</div>}
+        </AccordionSection>
+      </section>
+      ) : (
+      <section className="space-y-5">
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Card className="border-0 bg-gradient-to-br from-rose-500 to-red-600 text-white">
+            <CardHeader>
+              <CardDescription className="text-rose-100">Need Follow-up ({currentWeekCode})</CardDescription>
+              <CardTitle className="text-white">{managerReminderRows.length}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card className="border-0 bg-gradient-to-br from-sky-500 to-blue-600 text-white">
+            <CardHeader>
+              <CardDescription className="text-sky-100">In Progress 2+ weeks ({currentWeekCode})</CardDescription>
+              <CardTitle className="text-white">{managerInProgressMultiWeek.length}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card className="border-0 bg-gradient-to-br from-violet-500 to-indigo-600 text-white">
+            <CardHeader>
+              <CardDescription className="text-violet-100">Tasks in Current Week</CardDescription>
+              <CardTitle className="text-white">{managerCurrentWeekTasks.length}</CardTitle>
+            </CardHeader>
+          </Card>
+        </div>
+
+        <AccordionSection
+          title="Follow-up Board"
+          description={`Warnings using previous week (${managerPrevWeek || "N/A"}) vs current week (${currentWeekCode})`}
+        >
+          <div className="max-h-[420px] overflow-y-auto rounded-xl border border-white/70 bg-white shadow-sm">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr>
+                  <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Task ID</th>
+                  <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Assignee</th>
+                  <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Module</th>
+                  <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Warning</th>
+                </tr>
+              </thead>
+              <tbody>
+                {managerReminderRows.map((row) => (
+                  <tr key={`reminder-${row.taskKey}`} className="border-b hover:bg-slate-50">
+                    <td className="p-2">{row.taskId}</td>
+                    <td className="p-2">{row.assignee}</td>
+                    <td className="p-2">{row.module}</td>
+                    <td className="p-2">
+                      {row.doneBoth ? "Task done in both weeks (invalid)" : "Not done, missing current-week label"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </AccordionSection>
+
+        <AccordionSection
+          title="Workload by Assignee"
+          description="Task load split by difficulty group"
+        >
+          <div className="max-h-[420px] overflow-y-auto rounded-xl border border-white/70 bg-white shadow-sm">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr>
+                  <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Assignee</th>
+                  <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Light (C1-C2)</th>
+                  <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Medium (C3)</th>
+                  <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Heavy (C4-C5)</th>
+                  <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {managerWorkloadRows.map((row) => (
+                  <tr key={`work-${row.assignee}`} className="border-b hover:bg-slate-50">
+                    <td className="p-2">{row.assignee}</td>
+                    <td className="p-2">{displayCount(row.light)}</td>
+                    <td className="p-2">{displayCount(row.medium)}</td>
+                    <td className="p-2">{displayCount(row.heavy)}</td>
+                    <td className="p-2">{displayCount(row.total)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </AccordionSection>
+
+        <AccordionSection
+          title="In Progress Over Multiple Weeks"
+          description="Potential stalled tasks for direct reminder"
+        >
+          <div className="max-h-[420px] overflow-y-auto rounded-xl border border-white/70 bg-white shadow-sm">
+            <table className="w-full border-collapse text-sm">
+              <thead>
+                <tr>
+                  <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Task ID</th>
+                  <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Task</th>
+                  <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Assignee</th>
+                  <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Module</th>
+                  <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Weeks</th>
+                </tr>
+              </thead>
+              <tbody>
+                {managerInProgressMultiWeek.map((row) => (
+                  <tr key={`ip-${row.taskId}-${row.taskName}`} className="border-b hover:bg-slate-50">
+                    <td className="p-2">{row.taskId}</td>
+                    <td className="p-2">{row.taskName}</td>
+                    <td className="p-2">{row.assignee}</td>
+                    <td className="p-2">{row.module}</td>
+                    <td className="p-2">{row.weeks}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </AccordionSection>
+      </section>
       )}
+
+      {!rawRows.length && !error && <div className="py-8 text-center text-sm text-muted-foreground">Upload a file to start analysis.</div>}
     </main>
   );
 }
