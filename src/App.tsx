@@ -125,6 +125,10 @@ function formatClock(date: Date) {
   return `${twoDigits(date.getHours())}:${twoDigits(date.getMinutes())}:${twoDigits(date.getSeconds())}`;
 }
 
+function weekdayName(date: Date) {
+  return date.toLocaleDateString("en-US", { weekday: "long" });
+}
+
 function parseTaskKeyCell(value: string | number | undefined) {
   const raw = String(value ?? "").trim();
   const markdown = raw.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/i);
@@ -803,51 +807,61 @@ export default function App() {
 
   const totalTasks = tasks.length;
   const withWeek = tasks.filter((task) => task.weeks.length > 0).length;
+  const hasData = rawRows.length > 0;
 
   return (
     <main className="mx-auto max-w-[1300px] p-4 md:p-8">
-      <section className="mb-6 grid gap-4 lg:grid-cols-4">
-        <div className="lg:col-span-2 rounded-3xl border border-cyan-200/70 bg-gradient-to-br from-cyan-500 via-blue-600 to-indigo-700 p-6 text-white shadow-[0_25px_60px_rgba(37,99,235,0.32)]">
-          <div className="mb-3 text-sm uppercase tracking-[0.2em] text-cyan-100">Current Working Week</div>
-          <div className="mb-2 text-5xl font-bold">{currentWeekCode}</div>
-          <div className="text-sm text-cyan-100">
-            {formatDate(currentRange.monday)} - {formatDate(currentRange.friday)} (Mon - Fri)
+      <section className="mb-6 grid gap-3 md:grid-cols-3">
+        <div className="rounded-2xl border border-cyan-200/70 bg-gradient-to-br from-cyan-500 via-blue-600 to-indigo-700 p-4 text-white shadow-[0_20px_45px_rgba(37,99,235,0.26)]">
+          <div className="text-[11px] uppercase tracking-[0.18em] text-cyan-100">Current Week</div>
+          <div className="mt-1 text-3xl font-bold">{currentWeekCode}</div>
+          <div className="mt-1 text-xs text-cyan-100">
+            {formatDate(currentRange.monday)} - {formatDate(currentRange.friday)}
           </div>
-          <div className="mt-3 inline-flex rounded-full bg-white/20 px-3 py-1 text-sm">
-            {formatClock(now)} | {formatDate(now)}
+          <div className="mt-2 -ml-4 gap-1 flex w-[274px] items-center justify-start rounded-full rounded-l-none bg-white/20 px-3 py-1.5 text-base font-semibold tabular-nums">
+            <span className="">{weekdayName(now)}</span>
+            <span className="opacity-70">|</span>
+            <span className="">{formatDate(now)}</span>
+            <span className="opacity-70">|</span>
+            <span className="">{formatClock(now)}</span>
           </div>
         </div>
-        <Card className="border-0 bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-xl">
-          <CardHeader>
-            <CardDescription className="text-indigo-100">Total Task</CardDescription>
-            <CardTitle className="text-3xl text-white">{totalTasks}</CardTitle>
+        <Card className="border-0 bg-gradient-to-br from-indigo-500 to-violet-600 text-white shadow-lg">
+          <CardHeader className="p-4">
+            <CardDescription className="text-indigo-100">Task Summary</CardDescription>
+            <CardTitle className="text-white text-3xl">{totalTasks}</CardTitle>
+            <p className="text-sm text-indigo-100">Valid week labels: {withWeek}</p>
           </CardHeader>
         </Card>
-        <Card className="border-0 bg-gradient-to-br from-emerald-500 to-teal-600 text-white shadow-xl">
-          <CardHeader>
-            <CardDescription className="text-emerald-100">Valid Week Labels</CardDescription>
-            <CardTitle className="text-3xl text-white">{withWeek}</CardTitle>
+        <Card className="border-0 bg-gradient-to-br from-slate-600 to-slate-800 text-white shadow-lg">
+          <CardHeader className="p-4">
+            <CardDescription className="text-slate-200">Status Summary</CardDescription>
+            <div className="mt-1 grid grid-cols-2 gap-2 text-sm">
+              <div>Open: <span className="font-semibold">{overviewStatus.open}</span></div>
+              <div>In Progress: <span className="font-semibold">{overviewStatus.inprogress}</span></div>
+              <div>Done: <span className="font-semibold">{overviewStatus.done}</span></div>
+              <div>Other: <span className="font-semibold">{overviewStatus.other}</span></div>
+            </div>
           </CardHeader>
         </Card>
       </section>
 
-      <section className="mb-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-0 bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-lg"><CardHeader><CardDescription className="text-sky-100">Open</CardDescription><CardTitle className="text-white">{overviewStatus.open}</CardTitle></CardHeader></Card>
-        <Card className="border-0 bg-gradient-to-br from-amber-400 to-orange-500 text-white shadow-lg"><CardHeader><CardDescription className="text-amber-100">In Progress</CardDescription><CardTitle className="text-white">{overviewStatus.inprogress}</CardTitle></CardHeader></Card>
-        <Card className="border-0 bg-gradient-to-br from-emerald-500 to-green-600 text-white shadow-lg"><CardHeader><CardDescription className="text-emerald-100">Done</CardDescription><CardTitle className="text-white">{overviewStatus.done}</CardTitle></CardHeader></Card>
-        <Card className="border-0 bg-gradient-to-br from-slate-500 to-slate-700 text-white shadow-lg"><CardHeader><CardDescription className="text-slate-100">Other</CardDescription><CardTitle className="text-white">{overviewStatus.other}</CardTitle></CardHeader></Card>
-      </section>
-
-      <section className="mb-6 rounded-2xl border border-white/60 bg-white/75 p-5 shadow-[0_12px_40px_rgba(15,23,42,0.08)] backdrop-blur-xl">
-        <div className="mb-2 flex items-center gap-2">
-          <Upload className="h-5 w-5 text-primary" />
-          <h1 className="text-2xl font-semibold tracking-tight">Task Statistics Dashboard</h1>
-        </div>
-        <p className="mb-4 text-sm text-muted-foreground">Upload Excel/CSV, then use the filter accordions below for analysis.</p>
-        <div className="space-y-2">
-          <Label htmlFor="file">File Excel/CSV</Label>
-          <Input id="file" type="file" accept=".xlsx,.xls,.csv" onChange={(e) => handleFileUpload(e.target.files?.[0] ?? null)} />
-        </div>
+      <section className="mb-6 rounded-xl border border-white/60 bg-white/80 p-3 shadow-[0_8px_26px_rgba(15,23,42,0.08)] backdrop-blur-xl">
+        <details open={!hasData}>
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Upload className="h-4 w-4 text-primary" />
+              <h1 className="text-sm font-semibold tracking-tight">Data Input</h1>
+            </div>
+            <span className="text-xs text-muted-foreground">
+              {hasData ? "Data loaded - click to upload new file" : "Upload file to start"}
+            </span>
+          </summary>
+          <div className="mt-3 grid gap-2 sm:grid-cols-[220px,1fr] sm:items-center">
+            <Label htmlFor="file" className="text-xs text-muted-foreground">Excel/CSV File</Label>
+            <Input id="file" type="file" accept=".xlsx,.xls,.csv" onChange={(e) => handleFileUpload(e.target.files?.[0] ?? null)} className="h-9 text-sm" />
+          </div>
+        </details>
         {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
         {copied && <p className="mt-3 text-sm text-emerald-700">{copied}</p>}
       </section>
