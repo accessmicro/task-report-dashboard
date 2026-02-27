@@ -212,6 +212,9 @@ export default function App() {
   const [error, setError] = useState("");
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
   const [now, setNow] = useState(new Date());
+  const currentWeekInfo = isoWeekInfo(now);
+  const currentWeekCode = `W${twoDigits(currentWeekInfo.week)}`;
+  const currentRange = weekRangeMonToFri(now);
   const [activeTab, setActiveTab] = useState<"main" | "manager">("main");
 
   const [projectAllWeeks, setProjectAllWeeks] = useState(true);
@@ -222,6 +225,7 @@ export default function App() {
   const [assigneeWeekFilters, setAssigneeWeekFilters] = useState<string[]>([]);
   const [compareWeekA, setCompareWeekA] = useState("");
   const [compareWeekB, setCompareWeekB] = useState("");
+  const [managerWeek, setManagerWeek] = useState("");
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
@@ -313,6 +317,7 @@ export default function App() {
       const sortedWeeks = Array.from(weekSet).sort((a, b) => weekIndex(a) - weekIndex(b));
       setCompareWeekA(sortedWeeks.length >= 2 ? sortedWeeks[sortedWeeks.length - 2] : sortedWeeks[0] ?? "");
       setCompareWeekB(sortedWeeks.length >= 1 ? sortedWeeks[sortedWeeks.length - 1] : "");
+      setManagerWeek(sortedWeeks.includes(currentWeekCode) ? currentWeekCode : (sortedWeeks[sortedWeeks.length - 1] ?? ""));
     } catch {
       setError("Unable to read file. Please check Excel/CSV format.");
       setRawRows([]);
@@ -482,6 +487,16 @@ export default function App() {
     return ordered.join(", ");
   }, [assigneeAllWeeks, assigneeWeekFilters, allWeeks]);
 
+  useEffect(() => {
+    if (!allWeeks.length) {
+      setManagerWeek("");
+      return;
+    }
+    if (!managerWeek || !allWeeks.includes(managerWeek)) {
+      setManagerWeek(allWeeks.includes(currentWeekCode) ? currentWeekCode : allWeeks[allWeeks.length - 1]);
+    }
+  }, [allWeeks, managerWeek, currentWeekCode]);
+
   const compareRows = useMemo(() => {
     if (!compareWeekA || !compareWeekB) return [] as Array<{
       taskKey: string;
@@ -568,14 +583,12 @@ export default function App() {
     return { changed, invalidDoneBoth, total: compareRows.length };
   }, [compareRows]);
 
-  const currentWeekInfo = isoWeekInfo(now);
-  const currentWeekCode = `W${twoDigits(currentWeekInfo.week)}`;
-  const currentRange = weekRangeMonToFri(now);
-  const managerPrevWeek = previousWeek(currentWeekCode);
+  const managerWeekCode = managerWeek || currentWeekCode;
+  const managerPrevWeek = previousWeek(managerWeekCode);
 
   const managerCurrentWeekTasks = useMemo(
-    () => tasks.filter((task) => task.weeks.includes(currentWeekCode)),
-    [tasks, currentWeekCode]
+    () => tasks.filter((task) => task.weeks.includes(managerWeekCode)),
+    [tasks, managerWeekCode]
   );
 
   const managerReminderRows = useMemo(() => {
@@ -602,7 +615,7 @@ export default function App() {
     return Array.from(taskMap.entries())
       .map(([taskKey, task]) => {
         const prevStatus = managerPrevWeek ? task.statusByWeek.get(managerPrevWeek) ?? "-" : "-";
-        const currentStatus = task.statusByWeek.get(currentWeekCode) ?? "-";
+        const currentStatus = task.statusByWeek.get(managerWeekCode) ?? "-";
         const doneBoth = prevStatus === "done" && currentStatus === "done";
         const missingCurrent = prevStatus !== "-" && prevStatus !== "done" && currentStatus === "-";
         return {
@@ -617,7 +630,7 @@ export default function App() {
       })
       .filter((row) => row.doneBoth || row.missingCurrent)
       .sort((a, b) => a.module.localeCompare(b.module) || a.assignee.localeCompare(b.assignee) || a.taskId.localeCompare(b.taskId));
-  }, [tasks, currentWeekCode, managerPrevWeek]);
+  }, [tasks, managerWeekCode, managerPrevWeek]);
 
   const managerInProgressMultiWeek = useMemo(() => {
     const map = new Map<string, { taskId: string; taskName: string; assignee: string; module: string; weeks: string }>();
@@ -1236,16 +1249,39 @@ export default function App() {
       </section>
       ) : (
       <section className="space-y-5">
+        <div className="flex flex-wrap items-end justify-between gap-3 rounded-xl border border-white/70 bg-white p-4 shadow-sm">
+          <div>
+            <div className="text-sm font-medium">Manager week scope</div>
+            <div className="text-xs text-muted-foreground">All manager metrics below follow this selected week.</div>
+          </div>
+          <div className="w-full max-w-xs space-y-1">
+            <Label>Week</Label>
+            <Select value={managerWeekCode || "__none__"} onValueChange={(v) => setManagerWeek(v === "__none__" ? "" : v)}>
+              <SelectTrigger>
+                <SelectValue placeholder="Select week" />
+              </SelectTrigger>
+              <SelectContent>
+                {allWeeks.length === 0 && <SelectItem value="__none__">No week data</SelectItem>}
+                {allWeeks.map((week) => (
+                  <SelectItem key={`manager-${week}`} value={week}>
+                    {week}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
         <div className="grid gap-4 sm:grid-cols-3">
           <Card className="border-0 bg-gradient-to-br from-rose-500 to-red-600 text-white">
             <CardHeader>
-              <CardDescription className="text-rose-100">Need Follow-up ({currentWeekCode})</CardDescription>
+              <CardDescription className="text-rose-100">Need Follow-up ({managerWeekCode || "N/A"})</CardDescription>
               <CardTitle className="text-white">{managerReminderRows.length}</CardTitle>
             </CardHeader>
           </Card>
           <Card className="border-0 bg-gradient-to-br from-sky-500 to-blue-600 text-white">
             <CardHeader>
-              <CardDescription className="text-sky-100">In Progress 2+ weeks ({currentWeekCode})</CardDescription>
+              <CardDescription className="text-sky-100">In Progress 2+ weeks ({managerWeekCode || "N/A"})</CardDescription>
               <CardTitle className="text-white">{managerInProgressMultiWeek.length}</CardTitle>
             </CardHeader>
           </Card>
@@ -1259,7 +1295,7 @@ export default function App() {
 
         <AccordionSection
           title="Follow-up Board"
-          description={`Warnings using previous week (${managerPrevWeek || "N/A"}) vs current week (${currentWeekCode})`}
+          description={`Warnings using previous week (${managerPrevWeek || "N/A"}) vs selected week (${managerWeekCode || "N/A"})`}
         >
           <div className="max-h-[420px] overflow-y-auto rounded-xl border border-white/70 bg-white shadow-sm">
             <table className="w-full border-collapse text-sm">
