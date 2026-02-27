@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import * as XLSX from "xlsx";
 import { AlertTriangle, Circle, Upload } from "lucide-react";
-import { Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { Bar, BarChart, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -14,20 +14,25 @@ type Status = "open" | "inprogress" | "done" | "other";
 
 type Task = {
   taskId: string;
+  taskUrl: string;
+  issueType: string;
   assignee: string;
   storyPoint: number;
   name: string;
   weeks: string[];
+  epicLink: string;
   module: string;
   status: Status;
 };
 
 const COLUMN_ALIASES = {
-  taskId: ["taskid", "task id", "id", "ticketid", "jiraid"],
+  taskId: ["key", "taskid", "task id", "id", "ticketid", "jiraid"],
+  issueType: ["issuetype", "issue type", "type"],
   assignee: ["assignee"],
-  storyPoint: ["storypoint", "story point"],
-  name: ["name", "taskname", "task name"],
+  storyPoint: ["storypoints", "story points", "storypoint", "story point"],
+  name: ["summary", "name", "taskname", "task name"],
   labels: ["labels", "label"],
+  epicLink: ["epiclink", "epic link", "epic"],
   module: ["modulename", "module name", "module", "project", "projectname"],
   status: ["status", "state"]
 } as const;
@@ -43,8 +48,8 @@ function detectColumn(columns: string[], aliases: readonly string[]) {
 
 function normalizeStatus(value: string | number | undefined): Status {
   const v = String(value ?? "").toLowerCase().replace(/\s+/g, "");
-  if (v === "open") return "open";
-  if (v === "inprogress" || v === "in-progress" || v === "doing") return "inprogress";
+  if (v === "open" || v === "todo" || v === "to-do" || v === "new" || v === "backlog") return "open";
+  if (v === "inprogress" || v === "in-progress" || v === "doing" || v === "progress") return "inprogress";
   if (v === "done" || v === "closed") return "done";
   return "other";
 }
@@ -119,6 +124,24 @@ function formatDate(date: Date) {
 
 function formatClock(date: Date) {
   return `${twoDigits(date.getHours())}:${twoDigits(date.getMinutes())}:${twoDigits(date.getSeconds())}`;
+}
+
+function parseTaskKeyCell(value: string | number | undefined) {
+  const raw = String(value ?? "").trim();
+  const markdown = raw.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/i);
+  if (markdown) return { taskId: markdown[1], taskUrl: markdown[2] };
+
+  const urlMatch = raw.match(/https?:\/\/[^\s|,;]+/i);
+  const keyMatch = raw.match(/[A-Z][A-Z0-9]+-\d+/i);
+
+  if (urlMatch) {
+    const taskUrl = urlMatch[0];
+    const keyFromUrl = taskUrl.match(/[A-Z][A-Z0-9]+-\d+/i)?.[0];
+    return { taskId: (keyMatch?.[0] || keyFromUrl || raw).toUpperCase(), taskUrl };
+  }
+
+  if (keyMatch) return { taskId: keyMatch[0].toUpperCase(), taskUrl: "" };
+  return { taskId: raw || "-", taskUrl: "" };
 }
 
 function escapeCsv(value: string | number) {
@@ -206,19 +229,24 @@ export default function App() {
       const columns = Array.from(new Set(rows.flatMap((r) => Object.keys(r)).filter(Boolean)));
 
       const colTaskId = detectColumn(columns, COLUMN_ALIASES.taskId);
+      const colIssueType = detectColumn(columns, COLUMN_ALIASES.issueType);
       const colAssignee = detectColumn(columns, COLUMN_ALIASES.assignee);
       const colStoryPoint = detectColumn(columns, COLUMN_ALIASES.storyPoint);
       const colName = detectColumn(columns, COLUMN_ALIASES.name);
       const colLabels = detectColumn(columns, COLUMN_ALIASES.labels);
+      const colEpicLink = detectColumn(columns, COLUMN_ALIASES.epicLink);
       const colModule = detectColumn(columns, COLUMN_ALIASES.module);
       const colStatus = detectColumn(columns, COLUMN_ALIASES.status);
 
       const missing: string[] = [];
+      if (!colTaskId) missing.push("Key");
+      if (!colIssueType) missing.push("Issue Type");
       if (!colAssignee) missing.push("Assignee");
-      if (!colStoryPoint) missing.push("Story point");
-      if (!colName) missing.push("Name");
+      if (!colStoryPoint) missing.push("Story Points");
+      if (!colName) missing.push("Summary");
       if (!colLabels) missing.push("Labels");
-      if (!colModule) missing.push("Module Name");
+      if (!colEpicLink) missing.push("Epic Link");
+      if (!colModule) missing.push("ModuleName");
       if (!colStatus) missing.push("Status");
 
       if (missing.length) {
@@ -228,15 +256,21 @@ export default function App() {
         return;
       }
 
-      const parsedTasks: Task[] = rows.map((row) => ({
-        taskId: colTaskId ? String(row[colTaskId] || "") : "",
-        assignee: String(row[colAssignee] || "Unknown"),
-        storyPoint: storyPointValue(row[colStoryPoint]),
-        name: String(row[colName] || ""),
-        weeks: parseWeekLabels(row[colLabels]),
-        module: String(row[colModule] || "Unknown"),
-        status: normalizeStatus(row[colStatus])
-      }));
+      const parsedTasks: Task[] = rows.map((row) => {
+        const keyInfo = parseTaskKeyCell(row[colTaskId]);
+        return {
+          taskId: keyInfo.taskId,
+          taskUrl: keyInfo.taskUrl,
+          issueType: String(row[colIssueType] || "-"),
+          assignee: String(row[colAssignee] || "Unknown"),
+          storyPoint: storyPointValue(row[colStoryPoint]),
+          name: String(row[colName] || ""),
+          weeks: parseWeekLabels(row[colLabels]),
+          epicLink: String(row[colEpicLink] || "-"),
+          module: String(row[colModule] || "Unknown"),
+          status: normalizeStatus(row[colStatus])
+        };
+      });
 
       setRawRows(rows);
       setTasks(parsedTasks);
@@ -306,17 +340,24 @@ export default function App() {
         const matchAssignee = projectAssigneeFilter === "all" || task.assignee === projectAssigneeFilter;
         return matchWeek && matchModule && matchAssignee;
       })
+      .map((task) => ({
+        task,
+        warning:
+          Boolean(prevWeek) &&
+          (taskStatusByWeek.get(task.taskId || `${task.module}||${task.name}`)?.get(prevWeek) ?? "-") === "done"
+      }))
       .sort(
         (a, b) =>
-          a.module.localeCompare(b.module) ||
-          a.assignee.localeCompare(b.assignee) ||
-          statusIndex(a.status) - statusIndex(b.status) ||
-          a.name.localeCompare(b.name)
+          a.task.module.localeCompare(b.task.module) ||
+          a.task.assignee.localeCompare(b.task.assignee) ||
+          statusIndex(a.task.status) - statusIndex(b.task.status) ||
+          a.task.name.localeCompare(b.task.name)
       );
 
     const moduleCount = new Map<string, number>();
     const assigneeCount = new Map<string, number>();
-    filtered.forEach((task) => {
+    filtered.forEach((row) => {
+      const task = row.task;
       moduleCount.set(task.module, (moduleCount.get(task.module) ?? 0) + 1);
       const key = `${task.module}||${task.assignee}`;
       assigneeCount.set(key, (assigneeCount.get(key) ?? 0) + 1);
@@ -325,7 +366,8 @@ export default function App() {
     const seenModule = new Set<string>();
     const seenAssignee = new Set<string>();
 
-    return filtered.map((task) => {
+    return filtered.map((row) => {
+      const task = row.task;
       const assigneeKey = `${task.module}||${task.assignee}`;
       const showModule = !seenModule.has(task.module);
       const showAssignee = !seenAssignee.has(assigneeKey);
@@ -337,13 +379,14 @@ export default function App() {
         assignee: task.assignee,
         taskKey: task.taskId || `${task.module}||${task.name}`,
         taskId: task.taskId || "-",
+        taskUrl: task.taskUrl || "",
+        issueType: task.issueType || "-",
         taskName: task.name || "-",
+        epicLink: task.epicLink || "-",
         status: task.status,
         storyPoint: task.storyPoint,
         weeks: task.weeks.join(","),
-        prevDoneStillAppear:
-          Boolean(prevWeek) &&
-          (taskStatusByWeek.get(task.taskId || `${task.module}||${task.name}`)?.get(prevWeek) ?? "-") === "done",
+        prevDoneStillAppear: row.warning,
         prevWeek,
         showModule,
         showAssignee,
@@ -527,6 +570,17 @@ export default function App() {
     ];
   }, [projectRows]);
 
+  const projectAssigneeChartData = useMemo(() => {
+    const map = new Map<string, number>();
+    projectRows.forEach((row) => {
+      map.set(row.assignee, (map.get(row.assignee) ?? 0) + 1);
+    });
+    return Array.from(map.entries())
+      .map(([assignee, count]) => ({ assignee, count }))
+      .sort((a, b) => b.count - a.count || a.assignee.localeCompare(b.assignee))
+      .slice(0, 10);
+  }, [projectRows]);
+
   const assigneePieData = useMemo(() => {
     const summary = { C1: 0, C2: 0, C3: 0, C4: 0, C5: 0 };
     assigneeRows.forEach((row) => {
@@ -559,8 +613,19 @@ export default function App() {
       let csv = "";
       if (kind === "project") {
         csv = toCsv(
-          ["Module Name", "Assignee", "Task ID", "Task Name", "Status", "Story Point", "Weeks", "Prev Week Done But Still Appears"],
-          projectRows.map((r) => [r.module, r.assignee, r.taskId, r.taskName, r.status, r.storyPoint, r.weeks, r.prevDoneStillAppear ? "YES" : "NO"])
+          ["Module Name", "Assignee", "Task ID", "Issue Type", "Summary", "Epic Link", "Status", "Story Points", "Labels", "Prev Week Done But Still Appears"],
+          projectRows.map((r) => [
+            r.module,
+            r.assignee,
+            r.taskId,
+            r.issueType,
+            r.taskName,
+            r.epicLink,
+            r.status,
+            r.storyPoint,
+            r.weeks,
+            r.prevDoneStillAppear ? "YES" : "NO"
+          ])
         );
       }
 
@@ -722,8 +787,8 @@ export default function App() {
               <Button variant="outline" onClick={() => copyCsv("project")}>Copy CSV</Button>
             </div>
 
-            <div className="grid gap-4 lg:grid-cols-[260px,1fr]">
-              <div className="h-64 rounded-md border p-2">
+            <div className="mb-4 grid gap-4 lg:grid-cols-[320px,1fr]">
+              <div className="h-56 rounded-md border p-2">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
                     <Pie data={projectPieData} dataKey="value" nameKey="name" outerRadius={78} innerRadius={40}>
@@ -736,46 +801,69 @@ export default function App() {
                   </PieChart>
                 </ResponsiveContainer>
               </div>
+              <div className="h-56 rounded-md border p-2">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={projectAssigneeChartData}>
+                    <XAxis dataKey="assignee" tick={{ fontSize: 10 }} interval={0} angle={-25} textAnchor="end" height={70} />
+                    <YAxis allowDecimals={false} />
+                    <Tooltip />
+                    <Bar dataKey="count" fill="#0ea5e9" name="Task count" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
 
-              <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead rowSpan={2}>Module Name</TableHead>
-                  <TableHead rowSpan={2}>Assignee</TableHead>
-                  <TableHead colSpan={6} className="text-center">
-                    Task Details
-                  </TableHead>
-                </TableRow>
-                <TableRow>
-                  <TableHead>Task ID</TableHead>
-                  <TableHead>Task Name</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Story Point</TableHead>
-                  <TableHead>Weeks</TableHead>
-                  <TableHead>Cảnh báo</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
+            <div className="max-h-[560px] overflow-y-auto rounded-md border">
+              <table className="w-full border-collapse text-sm">
+                <thead>
+                  <tr>
+                    <th rowSpan={2} className="sticky top-0 z-30 bg-muted/80 px-2 py-2 text-left font-medium text-muted-foreground">Module Name</th>
+                    <th rowSpan={2} className="sticky top-0 z-30 bg-muted/80 px-2 py-2 text-left font-medium text-muted-foreground">Assignee</th>
+                    <th colSpan={6} className="sticky top-0 z-30 bg-muted/80 px-2 py-2 text-center font-medium text-muted-foreground">Task Details</th>
+                  </tr>
+                  <tr>
+                    <th className="sticky top-9 z-30 bg-muted/80 px-2 py-2 text-left font-medium text-muted-foreground">Task ID</th>
+                    <th className="sticky top-9 z-30 bg-muted/80 px-2 py-2 text-left font-medium text-muted-foreground">Task Name</th>
+                    <th className="sticky top-9 z-30 bg-muted/80 px-2 py-2 text-left font-medium text-muted-foreground">Status</th>
+                    <th className="sticky top-9 z-30 bg-muted/80 px-2 py-2 text-left font-medium text-muted-foreground">Story Point</th>
+                    <th className="sticky top-9 z-30 bg-muted/80 px-2 py-2 text-left font-medium text-muted-foreground">Weeks</th>
+                    <th className="sticky top-9 z-30 bg-muted/80 px-2 py-2 text-left font-medium text-muted-foreground">Cảnh báo</th>
+                  </tr>
+                </thead>
+                <tbody>
                 {projectRows.map((row) => (
-                  <TableRow key={`${row.module}-${row.assignee}-${row.taskKey}`}>
+                  <tr key={`${row.module}-${row.assignee}-${row.taskKey}`} className="border-b transition-colors hover:bg-muted/50">
                     {row.showModule && (
-                      <TableCell rowSpan={row.moduleRowSpan} className="align-top font-medium">
+                      <td rowSpan={row.moduleRowSpan} className="p-2 align-top font-medium">
                         {row.module}
-                      </TableCell>
+                      </td>
                     )}
                     {row.showAssignee && (
-                      <TableCell rowSpan={row.assigneeRowSpan} className="align-top">
+                      <td rowSpan={row.assigneeRowSpan} className="p-2 align-top">
                         {row.assignee}
-                      </TableCell>
+                      </td>
                     )}
-                    <TableCell>{row.taskId}</TableCell>
-                    <TableCell>{row.taskName}</TableCell>
-                    <TableCell>
+                    <td className="p-2">
+                      {row.taskUrl ? (
+                        <a
+                          href={row.taskUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="text-primary underline underline-offset-2"
+                        >
+                          {row.taskId}
+                        </a>
+                      ) : (
+                        row.taskId
+                      )}
+                    </td>
+                    <td className="p-2">{row.taskName}</td>
+                    <td className="p-2">
                       <StatusBadge status={row.status} />
-                    </TableCell>
-                    <TableCell>{row.storyPoint}</TableCell>
-                    <TableCell>{row.weeks}</TableCell>
-                    <TableCell>
+                    </td>
+                    <td className="p-2">{row.storyPoint}</td>
+                    <td className="p-2">{row.weeks}</td>
+                    <td className="p-2">
                       {row.prevDoneStillAppear ? (
                         <span
                           title={`Task đã done ở ${row.prevWeek} nhưng vẫn xuất hiện ở ${projectWeekFilter}`}
@@ -787,11 +875,11 @@ export default function App() {
                       ) : (
                         "-"
                       )}
-                    </TableCell>
-                  </TableRow>
+                    </td>
+                  </tr>
                 ))}
-              </TableBody>
-              </Table>
+                </tbody>
+              </table>
             </div>
           </CardContent>
         </Card>

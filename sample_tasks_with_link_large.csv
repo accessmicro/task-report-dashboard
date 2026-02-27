@@ -1,0 +1,261 @@
+﻿Key,Issue Type,Summary,Status,Assignee,Epic Link,ModuleName,Story Points,Labels
+[AM-2000](https://jira.accessmicro.vn/browse/AM-2000),Bug,Implement email template parser for migration,To Do,Pham Quynh Nhu,Platform,Checkout,4,W09
+[AM-2001](https://jira.accessmicro.vn/browse/AM-2001),Spike,Implement checkout validation for enterprise tenants,To Do,Hoang Duc Minh,Security,Checkout,4,"W09,W13"
+[AM-2002](https://jira.accessmicro.vn/browse/AM-2002),Story,Add refund queue processor for audit,To Do,Le Hoang Phuc,Platform,Auth,1,"W05,W12"
+[AM-2003](https://jira.accessmicro.vn/browse/AM-2003),Spike,Fix checkout validation for audit,Done,Bui Khanh Linh,Security,Auth,5,W09
+[AM-2004](https://jira.accessmicro.vn/browse/AM-2004),Story,Implement alert escalation rule for migration,In Progress,Nguyen Van An,Growth,Billing,2,W11
+[AM-2005](https://jira.accessmicro.vn/browse/AM-2005),Story,Investigate checkout validation for audit,In Progress,Vu Hong Ngoc,Operations,Checkout,5,"W07,W14"
+[AM-2006](https://jira.accessmicro.vn/browse/AM-2006),Bug,Validate invoice rendering for enterprise tenants,Done,Hoang Duc Minh,Data,Auth,2,"W05,W16"
+[AM-2007](https://jira.accessmicro.vn/browse/AM-2007),Spike,Validate mobile push dispatcher for scale test,To Do,Pham Quynh Nhu,CRM,Notification,4,W05
+[AM-2008](https://jira.accessmicro.vn/browse/AM-2008),Story,Optimize email template parser for scale test,To Do,Tran Minh Chau,Security,Notification,4,W13
+[AM-2009](https://jira.accessmicro.vn/browse/AM-2009),Spike,Fix partner webhook retry for enterprise tenants,In Progress,Vu Hong Ngoc,Finance,Notification,2,W03
+[AM-2010](https://jira.accessmicro.vn/browse/AM-2010),Improvement,Migrate RBAC permission matrix for audit,In Progress,Nguyen Van An,Finance,Checkout,2,"W04,W07"
+[AM-2011](https://jira.accessmicro.vn/browse/AM-2011),Story,Fix partner webhook retry for audit,To Do,Bui Khanh Linh,Operations,Auth,5,W05
+[AM-2012](https://jira.accessmicro.vn/browse/AM-2012),Spike,Fix partner webhook retry for production,To Do,Ngo Bao Long,Finance,Notification,1,"W06,W09"
+[AM-2013](https://jira.accessmicro.vn/browse/AM-2013),Bug,Implement JWT rotation policy for scale test,In Progress,Dang Thu Trang,Security,Reporting,2,"W11,W13"
+[AM-2014](https://jira.accessmicro.vn/browse/AM-2014),Story,Investigate refund queue processor for migration,In Progress,Do Thanh Son,Growth,Checkout,5,W03
+[AM-2015](https://jira.accessmicro.vn/browse/AM-2015),Spike,Implement email template parser for scale test,In Progress,Bui Khanh Linh,Platform,Notification,4,W15
+[AM-2016](https://jira.accessmicro.vn/browse/AM-2016),Spike,Migrate RBAC permission matrix for migration,To Do,Ngo Bao Long,Security,Billing,5,W05
+[AM-2017](https://jira.accessmicro.vn/browse/AM-2017),Story,Fix email template parser for onboarding,In Progress,Dang Thu Trang,Data,Billing,1,W15
+[AM-2018](https://jira.accessmicro.vn/browse/AM-2018),Improvement,Migrate payment retry flow for scale test,In Progress,Dang Thu Trang,Growth,Checkout,4,W03
+[AM-2019](https://jira.accessmicro.vn/browse/AM-2019),Spike,Add checkout validation for migration,In Progress,Hoang Duc Minh,Finance,Reporting,2,W12
+[AM-2020](https://jira.accessmicro.vn/browse/AM-2020),Task,Implement checkout validation for audit,In Progress,Ngo Bao Long,Security,Billing,5,"W07,W16"
+[AM-2021](https://jira.accessmicro.vn/browse/AM-2021),Improvement,Add invoice rendering for scale test,In Progress,Pham Quynh Nhu,Data,Reporting,1,W07
+[AM-2022](https://jira.accessmicro.vn/browse/AM-2022),Bug,Investigate payment retry flow for enterprise tenants,In Progress,Tran Minh Chau,Operations,Billing,5,W06
+[AM-2023](https://jira.accessmicro.vn/browse/AM-2023),Story,Investigate RBAC permission matrix for enterprise tenants,To Do,Truong Tuan Kiet,Operations,Notification,5,W04
+[AM-2024](https://jira.accessmicro.vn/browse/AM-2024),Improvement,Refactor partner webhook retry for audit,In Progress,Truong Tuan Kiet,Finance,Partner Portal,1,W04
+[AM-2025](https://jira.accessmicro.vn/browse/AM-2025),Bug,Refactor email template parser for onboarding,In Progress,Phan Ngoc Bich,Data,Inventory,4,"W09,W15"
+[AM-2026](https://jira.accessmicro.vn/browse/AM-2026),Story,Refactor partner webhook retry for production,In Progress,Dinh Quang Huy,Growth,Auth,3,W11
+[AM-2027](https://jira.accessmicro.vn/browse/AM-2027),Spike,Investigate refund queue processor for enterprise tenants,To Do,Ngo Bao Long,CRM,Billing,2,"W06,W15"
+[AM-2028](https://jira.accessmicro.vn/browse/AM-2028),Story,Investigate mobile push dispatcher for migration,To Do,Bui Khanh Linh,Operations,Reporting,5,"W09,W12"
+[AM-2029](https://jira.accessmicro.vn/browse/AM-2029),Spike,Add refund queue processor for scale test,Done,Dinh Quang Huy,CRM,Notification,4,"W10,W11"
+[AM-2030](https://jira.accessmicro.vn/browse/AM-2030),Spike,Validate JWT rotation policy for scale test,Done,Phan Ngoc Bich,Security,Reporting,4,W04
+[AM-2031](https://jira.accessmicro.vn/browse/AM-2031),Improvement,Validate monthly report export for onboarding,In Progress,Pham Quynh Nhu,Growth,Checkout,2,W15
+[AM-2032](https://jira.accessmicro.vn/browse/AM-2032),Story,Validate monthly report export for migration,To Do,Dang Thu Trang,CRM,Reporting,2,W06
+[AM-2033](https://jira.accessmicro.vn/browse/AM-2033),Spike,Investigate monthly report export for audit,To Do,Ngo Bao Long,Operations,Billing,5,"W08,W13"
+[AM-2034](https://jira.accessmicro.vn/browse/AM-2034),Improvement,Validate RBAC permission matrix for production,In Progress,Hoang Duc Minh,CRM,Billing,2,"W15,W16"
+[AM-2035](https://jira.accessmicro.vn/browse/AM-2035),Improvement,Fix JWT rotation policy for audit,In Progress,Dang Thu Trang,Data,Notification,1,W11
+[AM-2036](https://jira.accessmicro.vn/browse/AM-2036),Task,Investigate JWT rotation policy for migration,In Progress,Ngo Bao Long,CRM,Billing,3,"W07,W14"
+[AM-2037](https://jira.accessmicro.vn/browse/AM-2037),Improvement,Optimize checkout validation for onboarding,In Progress,Phan Ngoc Bich,Security,Inventory,5,W15
+[AM-2038](https://jira.accessmicro.vn/browse/AM-2038),Task,Validate JWT rotation policy for production,To Do,Dang Thu Trang,Finance,Reporting,2,W09
+[AM-2039](https://jira.accessmicro.vn/browse/AM-2039),Improvement,Refactor invoice rendering for migration,In Progress,Ngo Bao Long,CRM,Notification,3,"W03,W16"
+[AM-2040](https://jira.accessmicro.vn/browse/AM-2040),Improvement,Investigate monthly report export for audit,Done,Dang Thu Trang,Platform,Auth,5,W13
+[AM-2041](https://jira.accessmicro.vn/browse/AM-2041),Story,Add RBAC permission matrix for migration,In Progress,Hoang Duc Minh,Finance,Partner Portal,5,W08
+[AM-2042](https://jira.accessmicro.vn/browse/AM-2042),Task,Investigate payment retry flow for enterprise tenants,Done,Tran Minh Chau,Data,Inventory,2,W04
+[AM-2043](https://jira.accessmicro.vn/browse/AM-2043),Improvement,Migrate stock sync worker for scale test,To Do,Hoang Duc Minh,Data,Billing,1,W09
+[AM-2044](https://jira.accessmicro.vn/browse/AM-2044),Improvement,Validate email template parser for migration,In Progress,Tran Minh Chau,Growth,Reporting,2,W06
+[AM-2045](https://jira.accessmicro.vn/browse/AM-2045),Improvement,Migrate stock sync worker for scale test,In Progress,Vu Hong Ngoc,Data,Checkout,1,"W08,W13,W14"
+[AM-2046](https://jira.accessmicro.vn/browse/AM-2046),Improvement,Refactor invoice rendering for scale test,In Progress,Truong Tuan Kiet,Finance,Billing,5,W12
+[AM-2047](https://jira.accessmicro.vn/browse/AM-2047),Improvement,Fix checkout validation for audit,Done,Ngo Bao Long,Security,Inventory,1,W14
+[AM-2048](https://jira.accessmicro.vn/browse/AM-2048),Spike,Refactor monthly report export for onboarding,Done,Do Thanh Son,Growth,Checkout,4,W10
+[AM-2049](https://jira.accessmicro.vn/browse/AM-2049),Improvement,Validate refund queue processor for audit,In Progress,Dang Thu Trang,Operations,Billing,1,W08
+[AM-2050](https://jira.accessmicro.vn/browse/AM-2050),Improvement,Refactor checkout validation for production,In Progress,Pham Quynh Nhu,CRM,Inventory,3,W04
+[AM-2051](https://jira.accessmicro.vn/browse/AM-2051),Story,Implement payment retry flow for scale test,To Do,Tran Minh Chau,Growth,Notification,5,"W15,W16"
+[AM-2052](https://jira.accessmicro.vn/browse/AM-2052),Story,Optimize refund queue processor for enterprise tenants,To Do,Pham Quynh Nhu,CRM,Auth,5,W04
+[AM-2053](https://jira.accessmicro.vn/browse/AM-2053),Improvement,Add mobile push dispatcher for audit,To Do,Phan Ngoc Bich,Data,Notification,1,W11
+[AM-2054](https://jira.accessmicro.vn/browse/AM-2054),Bug,Add email template parser for migration,In Progress,Vo Gia Huy,Data,Notification,5,"W06,W11"
+[AM-2055](https://jira.accessmicro.vn/browse/AM-2055),Improvement,Optimize monthly report export for audit,In Progress,Hoang Duc Minh,Finance,Notification,2,W09
+[AM-2056](https://jira.accessmicro.vn/browse/AM-2056),Story,Optimize refund queue processor for onboarding,Done,Dinh Quang Huy,Data,Notification,4,"W12,W13,W14"
+[AM-2057](https://jira.accessmicro.vn/browse/AM-2057),Improvement,Optimize invoice rendering for enterprise tenants,To Do,Vu Hong Ngoc,Growth,Partner Portal,1,W10
+[AM-2058](https://jira.accessmicro.vn/browse/AM-2058),Bug,Refactor alert escalation rule for scale test,In Progress,Dang Thu Trang,Security,Partner Portal,5,W03
+[AM-2059](https://jira.accessmicro.vn/browse/AM-2059),Bug,Refactor stock sync worker for production,In Progress,Vo Gia Huy,Data,Billing,2,W10
+[AM-2060](https://jira.accessmicro.vn/browse/AM-2060),Spike,Optimize payment retry flow for enterprise tenants,In Progress,Dinh Quang Huy,Platform,Checkout,2,"W06,W07"
+[AM-2061](https://jira.accessmicro.vn/browse/AM-2061),Spike,Investigate invoice rendering for production,To Do,Bui Khanh Linh,Data,Auth,1,W12
+[AM-2062](https://jira.accessmicro.vn/browse/AM-2062),Task,Validate stock sync worker for migration,To Do,Dinh Quang Huy,Data,Inventory,3,"W07,W08"
+[AM-2063](https://jira.accessmicro.vn/browse/AM-2063),Improvement,Refactor partner webhook retry for scale test,To Do,Truong Tuan Kiet,Operations,Auth,1,W06
+[AM-2064](https://jira.accessmicro.vn/browse/AM-2064),Improvement,Investigate refund queue processor for audit,To Do,Nguyen Van An,Growth,Reporting,2,"W03,W07"
+[AM-2065](https://jira.accessmicro.vn/browse/AM-2065),Task,Implement partner webhook retry for production,To Do,Hoang Duc Minh,Growth,Auth,5,W09
+[AM-2066](https://jira.accessmicro.vn/browse/AM-2066),Bug,Optimize email template parser for scale test,In Progress,Pham Quynh Nhu,Finance,Reporting,5,"W04,W13,W15"
+[AM-2067](https://jira.accessmicro.vn/browse/AM-2067),Story,Refactor mobile push dispatcher for migration,In Progress,Le Hoang Phuc,Finance,Checkout,4,W13
+[AM-2068](https://jira.accessmicro.vn/browse/AM-2068),Task,Optimize monthly report export for onboarding,To Do,Nguyen Van An,Growth,Partner Portal,3,W11
+[AM-2069](https://jira.accessmicro.vn/browse/AM-2069),Improvement,Optimize refund queue processor for onboarding,In Progress,Hoang Duc Minh,Finance,Inventory,3,W10
+[AM-2070](https://jira.accessmicro.vn/browse/AM-2070),Spike,Migrate partner webhook retry for audit,In Progress,Tran Minh Chau,Platform,Inventory,5,W11
+[AM-2071](https://jira.accessmicro.vn/browse/AM-2071),Story,Implement alert escalation rule for scale test,In Progress,Nguyen Van An,Security,Partner Portal,4,"W03,W05"
+[AM-2072](https://jira.accessmicro.vn/browse/AM-2072),Bug,Implement payment retry flow for scale test,In Progress,Nguyen Van An,Growth,Auth,3,W09
+[AM-2073](https://jira.accessmicro.vn/browse/AM-2073),Improvement,Migrate refund queue processor for scale test,Done,Vo Gia Huy,Platform,Notification,5,W09
+[AM-2074](https://jira.accessmicro.vn/browse/AM-2074),Task,Investigate checkout validation for enterprise tenants,In Progress,Le Hoang Phuc,Operations,Inventory,5,W03
+[AM-2075](https://jira.accessmicro.vn/browse/AM-2075),Spike,Refactor RBAC permission matrix for onboarding,Done,Dinh Quang Huy,Growth,Inventory,3,W11
+[AM-2076](https://jira.accessmicro.vn/browse/AM-2076),Story,Add JWT rotation policy for onboarding,In Progress,Mai Thanh Ha,Security,Billing,3,"W11,W16"
+[AM-2077](https://jira.accessmicro.vn/browse/AM-2077),Bug,Investigate stock sync worker for production,To Do,Vu Hong Ngoc,CRM,Inventory,3,W10
+[AM-2078](https://jira.accessmicro.vn/browse/AM-2078),Story,Optimize checkout validation for audit,In Progress,Vu Hong Ngoc,CRM,Reporting,1,W08
+[AM-2079](https://jira.accessmicro.vn/browse/AM-2079),Bug,Fix alert escalation rule for onboarding,In Progress,Bui Khanh Linh,Operations,Reporting,4,W15
+[AM-2080](https://jira.accessmicro.vn/browse/AM-2080),Spike,Optimize JWT rotation policy for migration,To Do,Truong Tuan Kiet,Security,Auth,4,W14
+[AM-2081](https://jira.accessmicro.vn/browse/AM-2081),Improvement,Migrate checkout validation for onboarding,In Progress,Le Hoang Phuc,Security,Notification,5,W14
+[AM-2082](https://jira.accessmicro.vn/browse/AM-2082),Bug,Validate RBAC permission matrix for onboarding,Done,Bui Khanh Linh,CRM,Partner Portal,2,W08
+[AM-2083](https://jira.accessmicro.vn/browse/AM-2083),Bug,Migrate stock sync worker for onboarding,In Progress,Hoang Duc Minh,Data,Auth,1,W06
+[AM-2084](https://jira.accessmicro.vn/browse/AM-2084),Improvement,Add JWT rotation policy for audit,Done,Pham Quynh Nhu,Platform,Billing,1,W12
+[AM-2085](https://jira.accessmicro.vn/browse/AM-2085),Task,Add RBAC permission matrix for enterprise tenants,In Progress,Phan Ngoc Bich,Platform,Partner Portal,3,W15
+[AM-2086](https://jira.accessmicro.vn/browse/AM-2086),Spike,Optimize refund queue processor for onboarding,In Progress,Dang Thu Trang,Security,Partner Portal,5,"W03,W12"
+[AM-2087](https://jira.accessmicro.vn/browse/AM-2087),Task,Implement email template parser for migration,To Do,Nguyen Van An,CRM,Partner Portal,1,W13
+[AM-2088](https://jira.accessmicro.vn/browse/AM-2088),Bug,Add partner webhook retry for production,In Progress,Pham Quynh Nhu,Finance,Billing,1,"W03,W07"
+[AM-2089](https://jira.accessmicro.vn/browse/AM-2089),Bug,Optimize JWT rotation policy for audit,In Progress,Do Thanh Son,Security,Partner Portal,4,W06
+[AM-2090](https://jira.accessmicro.vn/browse/AM-2090),Bug,Refactor JWT rotation policy for enterprise tenants,In Progress,Ngo Bao Long,CRM,Inventory,3,W11
+[AM-2091](https://jira.accessmicro.vn/browse/AM-2091),Task,Migrate alert escalation rule for enterprise tenants,In Progress,Do Thanh Son,Platform,Billing,1,W11
+[AM-2092](https://jira.accessmicro.vn/browse/AM-2092),Story,Migrate refund queue processor for onboarding,In Progress,Nguyen Van An,CRM,Reporting,1,"W07,W08"
+[AM-2093](https://jira.accessmicro.vn/browse/AM-2093),Bug,Refactor stock sync worker for onboarding,In Progress,Bui Khanh Linh,CRM,Auth,4,W03
+[AM-2094](https://jira.accessmicro.vn/browse/AM-2094),Task,Validate refund queue processor for migration,Done,Pham Quynh Nhu,Finance,Partner Portal,4,W10
+[AM-2095](https://jira.accessmicro.vn/browse/AM-2095),Task,Optimize payment retry flow for migration,Done,Truong Tuan Kiet,Data,Notification,3,W12
+[AM-2096](https://jira.accessmicro.vn/browse/AM-2096),Bug,Validate alert escalation rule for scale test,To Do,Mai Thanh Ha,Platform,Notification,2,W09
+[AM-2097](https://jira.accessmicro.vn/browse/AM-2097),Improvement,Implement monthly report export for production,Done,Pham Quynh Nhu,Growth,Partner Portal,2,W09
+[AM-2098](https://jira.accessmicro.vn/browse/AM-2098),Improvement,Refactor alert escalation rule for audit,Done,Le Hoang Phuc,Growth,Auth,1,"W08,W11"
+[AM-2099](https://jira.accessmicro.vn/browse/AM-2099),Spike,Investigate email template parser for audit,In Progress,Truong Tuan Kiet,Finance,Auth,4,"W13,W15"
+[AM-2100](https://jira.accessmicro.vn/browse/AM-2100),Improvement,Investigate RBAC permission matrix for onboarding,To Do,Phan Ngoc Bich,Platform,Inventory,5,"W03,W16"
+[AM-2101](https://jira.accessmicro.vn/browse/AM-2101),Bug,Validate partner webhook retry for scale test,Done,Vo Gia Huy,Platform,Auth,3,"W04,W15"
+[AM-2102](https://jira.accessmicro.vn/browse/AM-2102),Spike,Implement refund queue processor for production,To Do,Phan Ngoc Bich,Finance,Partner Portal,4,"W09,W16"
+[AM-2103](https://jira.accessmicro.vn/browse/AM-2103),Spike,Migrate refund queue processor for audit,To Do,Nguyen Van An,Finance,Billing,3,"W07,W12"
+[AM-2104](https://jira.accessmicro.vn/browse/AM-2104),Improvement,Investigate payment retry flow for onboarding,To Do,Mai Thanh Ha,Growth,Inventory,2,"W03,W04"
+[AM-2105](https://jira.accessmicro.vn/browse/AM-2105),Story,Optimize email template parser for audit,In Progress,Truong Tuan Kiet,Growth,Partner Portal,4,W08
+[AM-2106](https://jira.accessmicro.vn/browse/AM-2106),Story,Investigate payment retry flow for audit,In Progress,Tran Minh Chau,CRM,Inventory,4,W05
+[AM-2107](https://jira.accessmicro.vn/browse/AM-2107),Story,Optimize monthly report export for production,To Do,Pham Quynh Nhu,CRM,Reporting,5,W06
+[AM-2108](https://jira.accessmicro.vn/browse/AM-2108),Spike,Optimize RBAC permission matrix for enterprise tenants,Done,Tran Minh Chau,Data,Notification,3,W04
+[AM-2109](https://jira.accessmicro.vn/browse/AM-2109),Improvement,Optimize mobile push dispatcher for enterprise tenants,To Do,Dinh Quang Huy,Growth,Auth,3,"W10,W12"
+[AM-2110](https://jira.accessmicro.vn/browse/AM-2110),Spike,Fix mobile push dispatcher for scale test,To Do,Ngo Bao Long,Platform,Partner Portal,3,W11
+[AM-2111](https://jira.accessmicro.vn/browse/AM-2111),Bug,Fix stock sync worker for migration,To Do,Vo Gia Huy,Platform,Partner Portal,5,W13
+[AM-2112](https://jira.accessmicro.vn/browse/AM-2112),Story,Fix monthly report export for scale test,To Do,Phan Ngoc Bich,Platform,Billing,4,W11
+[AM-2113](https://jira.accessmicro.vn/browse/AM-2113),Task,Migrate email template parser for scale test,In Progress,Vo Gia Huy,Finance,Auth,4,W13
+[AM-2114](https://jira.accessmicro.vn/browse/AM-2114),Improvement,Implement JWT rotation policy for production,To Do,Le Hoang Phuc,Operations,Reporting,3,W09
+[AM-2115](https://jira.accessmicro.vn/browse/AM-2115),Story,Investigate email template parser for onboarding,To Do,Ngo Bao Long,Operations,Partner Portal,5,"W04,W05"
+[AM-2116](https://jira.accessmicro.vn/browse/AM-2116),Bug,Validate alert escalation rule for onboarding,In Progress,Le Hoang Phuc,Data,Billing,3,W11
+[AM-2117](https://jira.accessmicro.vn/browse/AM-2117),Bug,Migrate monthly report export for scale test,In Progress,Hoang Duc Minh,Security,Auth,1,"W03,W10"
+[AM-2118](https://jira.accessmicro.vn/browse/AM-2118),Spike,Validate email template parser for enterprise tenants,In Progress,Vu Hong Ngoc,Operations,Auth,5,W04
+[AM-2119](https://jira.accessmicro.vn/browse/AM-2119),Story,Investigate checkout validation for scale test,In Progress,Dinh Quang Huy,Finance,Inventory,3,W15
+[AM-2120](https://jira.accessmicro.vn/browse/AM-2120),Spike,Investigate alert escalation rule for migration,In Progress,Dinh Quang Huy,Operations,Notification,2,W05
+[AM-2121](https://jira.accessmicro.vn/browse/AM-2121),Task,Implement RBAC permission matrix for audit,In Progress,Bui Khanh Linh,Finance,Inventory,4,W16
+[AM-2122](https://jira.accessmicro.vn/browse/AM-2122),Spike,Validate invoice rendering for audit,Done,Truong Tuan Kiet,Finance,Reporting,3,W07
+[AM-2123](https://jira.accessmicro.vn/browse/AM-2123),Task,Implement monthly report export for enterprise tenants,To Do,Dang Thu Trang,Finance,Auth,5,W13
+[AM-2124](https://jira.accessmicro.vn/browse/AM-2124),Spike,Migrate refund queue processor for migration,To Do,Vu Hong Ngoc,Operations,Notification,4,W05
+[AM-2125](https://jira.accessmicro.vn/browse/AM-2125),Bug,Migrate invoice rendering for onboarding,To Do,Nguyen Van An,Data,Billing,4,W13
+[AM-2126](https://jira.accessmicro.vn/browse/AM-2126),Spike,Implement alert escalation rule for audit,In Progress,Le Hoang Phuc,Finance,Notification,2,W08
+[AM-2127](https://jira.accessmicro.vn/browse/AM-2127),Improvement,Fix partner webhook retry for enterprise tenants,In Progress,Tran Minh Chau,Data,Billing,4,W05
+[AM-2128](https://jira.accessmicro.vn/browse/AM-2128),Bug,Add RBAC permission matrix for enterprise tenants,In Progress,Do Thanh Son,Finance,Partner Portal,2,"W11,W15"
+[AM-2129](https://jira.accessmicro.vn/browse/AM-2129),Improvement,Add partner webhook retry for migration,To Do,Hoang Duc Minh,Data,Auth,2,"W03,W14"
+[AM-2130](https://jira.accessmicro.vn/browse/AM-2130),Story,Validate checkout validation for onboarding,Done,Bui Khanh Linh,Data,Notification,1,W13
+[AM-2131](https://jira.accessmicro.vn/browse/AM-2131),Improvement,Fix alert escalation rule for production,To Do,Hoang Duc Minh,CRM,Auth,5,W12
+[AM-2132](https://jira.accessmicro.vn/browse/AM-2132),Story,Migrate partner webhook retry for audit,In Progress,Truong Tuan Kiet,Platform,Reporting,1,W10
+[AM-2133](https://jira.accessmicro.vn/browse/AM-2133),Improvement,Validate RBAC permission matrix for migration,Done,Vo Gia Huy,CRM,Reporting,4,W15
+[AM-2134](https://jira.accessmicro.vn/browse/AM-2134),Task,Implement stock sync worker for migration,Done,Ngo Bao Long,Security,Inventory,2,"W07,W12"
+[AM-2135](https://jira.accessmicro.vn/browse/AM-2135),Bug,Optimize refund queue processor for enterprise tenants,Done,Mai Thanh Ha,CRM,Billing,2,W16
+[AM-2136](https://jira.accessmicro.vn/browse/AM-2136),Improvement,Refactor mobile push dispatcher for production,To Do,Pham Quynh Nhu,Platform,Reporting,5,"W07,W13"
+[AM-2137](https://jira.accessmicro.vn/browse/AM-2137),Spike,Validate monthly report export for scale test,In Progress,Dang Thu Trang,Platform,Reporting,3,"W08,W15"
+[AM-2138](https://jira.accessmicro.vn/browse/AM-2138),Task,Refactor checkout validation for migration,In Progress,Pham Quynh Nhu,Finance,Notification,5,"W14,W16"
+[AM-2139](https://jira.accessmicro.vn/browse/AM-2139),Spike,Validate invoice rendering for audit,Done,Bui Khanh Linh,Finance,Checkout,1,"W06,W10,W14"
+[AM-2140](https://jira.accessmicro.vn/browse/AM-2140),Spike,Validate partner webhook retry for audit,To Do,Le Hoang Phuc,Security,Partner Portal,4,W13
+[AM-2141](https://jira.accessmicro.vn/browse/AM-2141),Improvement,Fix monthly report export for enterprise tenants,In Progress,Le Hoang Phuc,CRM,Reporting,4,W11
+[AM-2142](https://jira.accessmicro.vn/browse/AM-2142),Spike,Implement email template parser for enterprise tenants,To Do,Truong Tuan Kiet,Platform,Partner Portal,3,W12
+[AM-2143](https://jira.accessmicro.vn/browse/AM-2143),Spike,Fix payment retry flow for enterprise tenants,In Progress,Vo Gia Huy,Data,Inventory,4,"W03,W08"
+[AM-2144](https://jira.accessmicro.vn/browse/AM-2144),Story,Migrate monthly report export for production,To Do,Dang Thu Trang,Security,Reporting,1,"W11,W15"
+[AM-2145](https://jira.accessmicro.vn/browse/AM-2145),Spike,Implement invoice rendering for audit,To Do,Vu Hong Ngoc,Operations,Billing,4,W03
+[AM-2146](https://jira.accessmicro.vn/browse/AM-2146),Task,Implement partner webhook retry for enterprise tenants,Done,Vu Hong Ngoc,Finance,Billing,5,"W14,W16"
+[AM-2147](https://jira.accessmicro.vn/browse/AM-2147),Task,Optimize invoice rendering for migration,To Do,Hoang Duc Minh,Platform,Partner Portal,3,"W05,W08"
+[AM-2148](https://jira.accessmicro.vn/browse/AM-2148),Story,Implement monthly report export for audit,In Progress,Phan Ngoc Bich,Data,Inventory,2,W13
+[AM-2149](https://jira.accessmicro.vn/browse/AM-2149),Story,Add checkout validation for audit,Done,Phan Ngoc Bich,Growth,Auth,3,W05
+[AM-2150](https://jira.accessmicro.vn/browse/AM-2150),Story,Investigate checkout validation for enterprise tenants,To Do,Nguyen Van An,Security,Partner Portal,5,"W13,W14"
+[AM-2151](https://jira.accessmicro.vn/browse/AM-2151),Improvement,Fix monthly report export for production,Done,Pham Quynh Nhu,CRM,Billing,4,W09
+[AM-2152](https://jira.accessmicro.vn/browse/AM-2152),Task,Investigate payment retry flow for scale test,To Do,Phan Ngoc Bich,Platform,Checkout,5,W10
+[AM-2153](https://jira.accessmicro.vn/browse/AM-2153),Story,Implement alert escalation rule for migration,In Progress,Bui Khanh Linh,Finance,Checkout,2,W06
+[AM-2154](https://jira.accessmicro.vn/browse/AM-2154),Task,Migrate RBAC permission matrix for onboarding,In Progress,Nguyen Van An,CRM,Notification,1,W16
+[AM-2155](https://jira.accessmicro.vn/browse/AM-2155),Task,Investigate mobile push dispatcher for scale test,To Do,Do Thanh Son,Operations,Partner Portal,4,"W06,W10"
+[AM-2156](https://jira.accessmicro.vn/browse/AM-2156),Improvement,Add JWT rotation policy for enterprise tenants,Done,Dang Thu Trang,Operations,Reporting,1,"W05,W16"
+[AM-2157](https://jira.accessmicro.vn/browse/AM-2157),Bug,Migrate partner webhook retry for production,To Do,Truong Tuan Kiet,Finance,Partner Portal,3,W05
+[AM-2158](https://jira.accessmicro.vn/browse/AM-2158),Improvement,Migrate payment retry flow for migration,To Do,Pham Quynh Nhu,Growth,Billing,5,W10
+[AM-2159](https://jira.accessmicro.vn/browse/AM-2159),Bug,Investigate stock sync worker for scale test,To Do,Hoang Duc Minh,CRM,Billing,2,W04
+[AM-2160](https://jira.accessmicro.vn/browse/AM-2160),Bug,Fix payment retry flow for audit,To Do,Le Hoang Phuc,Security,Billing,2,W15
+[AM-2161](https://jira.accessmicro.vn/browse/AM-2161),Improvement,Add stock sync worker for scale test,In Progress,Vo Gia Huy,Data,Partner Portal,3,"W12,W16"
+[AM-2162](https://jira.accessmicro.vn/browse/AM-2162),Story,Optimize payment retry flow for audit,Done,Truong Tuan Kiet,Operations,Reporting,4,"W09,W14"
+[AM-2163](https://jira.accessmicro.vn/browse/AM-2163),Story,Validate stock sync worker for onboarding,To Do,Do Thanh Son,CRM,Billing,4,W03
+[AM-2164](https://jira.accessmicro.vn/browse/AM-2164),Bug,Refactor checkout validation for migration,To Do,Hoang Duc Minh,Platform,Auth,1,"W07,W12"
+[AM-2165](https://jira.accessmicro.vn/browse/AM-2165),Story,Add refund queue processor for migration,To Do,Phan Ngoc Bich,Growth,Billing,2,W06
+[AM-2166](https://jira.accessmicro.vn/browse/AM-2166),Task,Migrate payment retry flow for scale test,To Do,Phan Ngoc Bich,Platform,Inventory,5,W15
+[AM-2167](https://jira.accessmicro.vn/browse/AM-2167),Spike,Investigate RBAC permission matrix for scale test,To Do,Dinh Quang Huy,CRM,Partner Portal,5,W14
+[AM-2168](https://jira.accessmicro.vn/browse/AM-2168),Spike,Investigate checkout validation for enterprise tenants,To Do,Tran Minh Chau,Platform,Billing,5,W12
+[AM-2169](https://jira.accessmicro.vn/browse/AM-2169),Spike,Add alert escalation rule for production,To Do,Dang Thu Trang,Operations,Notification,4,"W06,W16"
+[AM-2170](https://jira.accessmicro.vn/browse/AM-2170),Story,Investigate stock sync worker for migration,In Progress,Le Hoang Phuc,Operations,Inventory,4,W10
+[AM-2171](https://jira.accessmicro.vn/browse/AM-2171),Spike,Validate checkout validation for onboarding,In Progress,Le Hoang Phuc,CRM,Checkout,4,W11
+[AM-2172](https://jira.accessmicro.vn/browse/AM-2172),Spike,Investigate monthly report export for audit,In Progress,Dinh Quang Huy,Operations,Billing,4,"W08,W15,W16"
+[AM-2173](https://jira.accessmicro.vn/browse/AM-2173),Story,Refactor refund queue processor for scale test,In Progress,Pham Quynh Nhu,Finance,Auth,5,W15
+[AM-2174](https://jira.accessmicro.vn/browse/AM-2174),Story,Optimize partner webhook retry for enterprise tenants,To Do,Pham Quynh Nhu,Data,Inventory,3,W07
+[AM-2175](https://jira.accessmicro.vn/browse/AM-2175),Spike,Optimize payment retry flow for scale test,To Do,Truong Tuan Kiet,Security,Billing,5,W04
+[AM-2176](https://jira.accessmicro.vn/browse/AM-2176),Story,Migrate RBAC permission matrix for migration,Done,Pham Quynh Nhu,CRM,Partner Portal,1,"W05,W06"
+[AM-2177](https://jira.accessmicro.vn/browse/AM-2177),Bug,Refactor monthly report export for scale test,In Progress,Hoang Duc Minh,Data,Notification,3,W03
+[AM-2178](https://jira.accessmicro.vn/browse/AM-2178),Bug,Optimize stock sync worker for migration,In Progress,Le Hoang Phuc,Data,Partner Portal,2,W07
+[AM-2179](https://jira.accessmicro.vn/browse/AM-2179),Story,Implement monthly report export for enterprise tenants,In Progress,Vo Gia Huy,Security,Billing,1,"W09,W15"
+[AM-2180](https://jira.accessmicro.vn/browse/AM-2180),Story,Implement partner webhook retry for migration,To Do,Vo Gia Huy,Platform,Partner Portal,1,"W05,W11"
+[AM-2181](https://jira.accessmicro.vn/browse/AM-2181),Spike,Investigate checkout validation for migration,In Progress,Dang Thu Trang,Data,Billing,5,"W03,W11"
+[AM-2182](https://jira.accessmicro.vn/browse/AM-2182),Story,Migrate checkout validation for enterprise tenants,Done,Vu Hong Ngoc,Security,Billing,4,"W06,W10"
+[AM-2183](https://jira.accessmicro.vn/browse/AM-2183),Improvement,Validate email template parser for production,Done,Phan Ngoc Bich,Security,Auth,5,W12
+[AM-2184](https://jira.accessmicro.vn/browse/AM-2184),Spike,Fix JWT rotation policy for scale test,Done,Bui Khanh Linh,Security,Reporting,3,"W11,W13"
+[AM-2185](https://jira.accessmicro.vn/browse/AM-2185),Task,Migrate stock sync worker for audit,In Progress,Truong Tuan Kiet,Data,Partner Portal,3,W07
+[AM-2186](https://jira.accessmicro.vn/browse/AM-2186),Improvement,Validate refund queue processor for audit,In Progress,Do Thanh Son,Finance,Auth,4,"W05,W08"
+[AM-2187](https://jira.accessmicro.vn/browse/AM-2187),Bug,Investigate payment retry flow for scale test,In Progress,Dang Thu Trang,Finance,Inventory,5,"W07,W12"
+[AM-2188](https://jira.accessmicro.vn/browse/AM-2188),Improvement,Optimize RBAC permission matrix for production,Done,Vo Gia Huy,Platform,Notification,1,W13
+[AM-2189](https://jira.accessmicro.vn/browse/AM-2189),Spike,Implement JWT rotation policy for onboarding,In Progress,Phan Ngoc Bich,Platform,Checkout,5,W12
+[AM-2190](https://jira.accessmicro.vn/browse/AM-2190),Bug,Add mobile push dispatcher for scale test,In Progress,Do Thanh Son,Growth,Inventory,3,W04
+[AM-2191](https://jira.accessmicro.vn/browse/AM-2191),Improvement,Add invoice rendering for scale test,In Progress,Bui Khanh Linh,Growth,Reporting,1,W12
+[AM-2192](https://jira.accessmicro.vn/browse/AM-2192),Spike,Validate payment retry flow for onboarding,Done,Le Hoang Phuc,Data,Billing,2,W09
+[AM-2193](https://jira.accessmicro.vn/browse/AM-2193),Story,Fix mobile push dispatcher for enterprise tenants,Done,Le Hoang Phuc,CRM,Inventory,1,W07
+[AM-2194](https://jira.accessmicro.vn/browse/AM-2194),Task,Investigate alert escalation rule for onboarding,To Do,Phan Ngoc Bich,Operations,Auth,4,"W12,W15"
+[AM-2195](https://jira.accessmicro.vn/browse/AM-2195),Task,Refactor payment retry flow for enterprise tenants,Done,Hoang Duc Minh,Operations,Partner Portal,4,W07
+[AM-2196](https://jira.accessmicro.vn/browse/AM-2196),Spike,Fix payment retry flow for migration,In Progress,Nguyen Van An,Growth,Inventory,4,"W15,W16"
+[AM-2197](https://jira.accessmicro.vn/browse/AM-2197),Improvement,Add email template parser for production,In Progress,Nguyen Van An,Platform,Notification,5,"W09,W10"
+[AM-2198](https://jira.accessmicro.vn/browse/AM-2198),Task,Add stock sync worker for audit,Done,Dang Thu Trang,Security,Notification,2,W08
+[AM-2199](https://jira.accessmicro.vn/browse/AM-2199),Improvement,Validate partner webhook retry for onboarding,In Progress,Tran Minh Chau,Platform,Checkout,3,W12
+[AM-2200](https://jira.accessmicro.vn/browse/AM-2200),Story,Refactor alert escalation rule for onboarding,To Do,Mai Thanh Ha,CRM,Partner Portal,4,W11
+[AM-2201](https://jira.accessmicro.vn/browse/AM-2201),Task,Implement payment retry flow for scale test,To Do,Dang Thu Trang,Operations,Billing,1,W09
+[AM-2202](https://jira.accessmicro.vn/browse/AM-2202),Spike,Optimize stock sync worker for enterprise tenants,Done,Tran Minh Chau,Platform,Checkout,2,"W13,W16"
+[AM-2203](https://jira.accessmicro.vn/browse/AM-2203),Improvement,Optimize monthly report export for migration,To Do,Pham Quynh Nhu,Data,Notification,2,"W09,W10"
+[AM-2204](https://jira.accessmicro.vn/browse/AM-2204),Task,Migrate invoice rendering for production,Done,Pham Quynh Nhu,Platform,Inventory,4,W13
+[AM-2205](https://jira.accessmicro.vn/browse/AM-2205),Task,Implement mobile push dispatcher for onboarding,In Progress,Dinh Quang Huy,Platform,Notification,3,"W06,W12"
+[AM-2206](https://jira.accessmicro.vn/browse/AM-2206),Spike,Refactor refund queue processor for audit,In Progress,Le Hoang Phuc,Finance,Billing,1,W13
+[AM-2207](https://jira.accessmicro.vn/browse/AM-2207),Bug,Investigate mobile push dispatcher for production,To Do,Hoang Duc Minh,Operations,Checkout,4,W05
+[AM-2208](https://jira.accessmicro.vn/browse/AM-2208),Spike,Optimize payment retry flow for migration,Done,Dang Thu Trang,CRM,Billing,2,W14
+[AM-2209](https://jira.accessmicro.vn/browse/AM-2209),Task,Fix alert escalation rule for production,In Progress,Truong Tuan Kiet,Operations,Partner Portal,1,W03
+[AM-2210](https://jira.accessmicro.vn/browse/AM-2210),Task,Add JWT rotation policy for scale test,Done,Vu Hong Ngoc,CRM,Checkout,5,W07
+[AM-2211](https://jira.accessmicro.vn/browse/AM-2211),Improvement,Optimize RBAC permission matrix for scale test,To Do,Bui Khanh Linh,Finance,Checkout,5,"W05,W09"
+[AM-2212](https://jira.accessmicro.vn/browse/AM-2212),Bug,Fix payment retry flow for scale test,To Do,Truong Tuan Kiet,Data,Auth,2,W14
+[AM-2213](https://jira.accessmicro.vn/browse/AM-2213),Story,Add invoice rendering for migration,To Do,Tran Minh Chau,Platform,Auth,2,"W04,W05"
+[AM-2214](https://jira.accessmicro.vn/browse/AM-2214),Bug,Validate email template parser for audit,In Progress,Vo Gia Huy,Data,Reporting,4,W14
+[AM-2215](https://jira.accessmicro.vn/browse/AM-2215),Story,Optimize refund queue processor for audit,To Do,Le Hoang Phuc,Platform,Notification,5,"W05,W11"
+[AM-2216](https://jira.accessmicro.vn/browse/AM-2216),Task,Validate monthly report export for scale test,In Progress,Vu Hong Ngoc,CRM,Reporting,3,W16
+[AM-2217](https://jira.accessmicro.vn/browse/AM-2217),Improvement,Refactor mobile push dispatcher for scale test,In Progress,Mai Thanh Ha,Platform,Billing,5,"W11,W16"
+[AM-2218](https://jira.accessmicro.vn/browse/AM-2218),Task,Refactor RBAC permission matrix for onboarding,In Progress,Vu Hong Ngoc,Operations,Auth,4,W14
+[AM-2219](https://jira.accessmicro.vn/browse/AM-2219),Bug,Add payment retry flow for enterprise tenants,To Do,Tran Minh Chau,Operations,Inventory,5,"W05,W06"
+[AM-2220](https://jira.accessmicro.vn/browse/AM-2220),Improvement,Fix mobile push dispatcher for migration,To Do,Vo Gia Huy,CRM,Reporting,4,W15
+[AM-2221](https://jira.accessmicro.vn/browse/AM-2221),Spike,Implement JWT rotation policy for audit,To Do,Vo Gia Huy,Finance,Billing,1,W14
+[AM-2222](https://jira.accessmicro.vn/browse/AM-2222),Bug,Validate payment retry flow for enterprise tenants,Done,Hoang Duc Minh,Data,Partner Portal,1,W08
+[AM-2223](https://jira.accessmicro.vn/browse/AM-2223),Task,Optimize JWT rotation policy for migration,Done,Dang Thu Trang,Finance,Notification,2,"W10,W15"
+[AM-2224](https://jira.accessmicro.vn/browse/AM-2224),Story,Fix RBAC permission matrix for enterprise tenants,In Progress,Vu Hong Ngoc,Finance,Checkout,3,"W04,W13"
+[AM-2225](https://jira.accessmicro.vn/browse/AM-2225),Improvement,Refactor partner webhook retry for enterprise tenants,To Do,Le Hoang Phuc,Finance,Partner Portal,4,W15
+[AM-2226](https://jira.accessmicro.vn/browse/AM-2226),Improvement,Add alert escalation rule for audit,In Progress,Phan Ngoc Bich,Finance,Partner Portal,2,"W09,W16"
+[AM-2227](https://jira.accessmicro.vn/browse/AM-2227),Spike,Refactor alert escalation rule for scale test,In Progress,Le Hoang Phuc,CRM,Auth,5,W05
+[AM-2228](https://jira.accessmicro.vn/browse/AM-2228),Story,Migrate RBAC permission matrix for migration,Done,Dang Thu Trang,CRM,Reporting,3,"W05,W16"
+[AM-2229](https://jira.accessmicro.vn/browse/AM-2229),Spike,Refactor payment retry flow for enterprise tenants,To Do,Le Hoang Phuc,Finance,Billing,2,W06
+[AM-2230](https://jira.accessmicro.vn/browse/AM-2230),Story,Investigate payment retry flow for scale test,To Do,Phan Ngoc Bich,Finance,Billing,5,W12
+[AM-2231](https://jira.accessmicro.vn/browse/AM-2231),Bug,Fix JWT rotation policy for migration,To Do,Bui Khanh Linh,Platform,Notification,1,W10
+[AM-2232](https://jira.accessmicro.vn/browse/AM-2232),Spike,Add monthly report export for scale test,To Do,Nguyen Van An,Finance,Notification,2,"W07,W09"
+[AM-2233](https://jira.accessmicro.vn/browse/AM-2233),Bug,Implement partner webhook retry for migration,In Progress,Pham Quynh Nhu,Data,Auth,1,W14
+[AM-2234](https://jira.accessmicro.vn/browse/AM-2234),Improvement,Refactor payment retry flow for migration,In Progress,Truong Tuan Kiet,Security,Billing,4,"W03,W06"
+[AM-2235](https://jira.accessmicro.vn/browse/AM-2235),Story,Fix alert escalation rule for enterprise tenants,To Do,Mai Thanh Ha,Operations,Partner Portal,4,W16
+[AM-2236](https://jira.accessmicro.vn/browse/AM-2236),Story,Migrate refund queue processor for migration,In Progress,Dang Thu Trang,Finance,Partner Portal,4,"W03,W12"
+[AM-2237](https://jira.accessmicro.vn/browse/AM-2237),Bug,Migrate RBAC permission matrix for onboarding,To Do,Pham Quynh Nhu,Operations,Reporting,4,"W08,W09"
+[AM-2238](https://jira.accessmicro.vn/browse/AM-2238),Spike,Add RBAC permission matrix for audit,To Do,Hoang Duc Minh,Growth,Partner Portal,4,"W08,W10"
+[AM-2239](https://jira.accessmicro.vn/browse/AM-2239),Bug,Refactor checkout validation for onboarding,In Progress,Le Hoang Phuc,CRM,Checkout,4,W05
+[AM-2240](https://jira.accessmicro.vn/browse/AM-2240),Story,Fix checkout validation for scale test,In Progress,Ngo Bao Long,Security,Partner Portal,5,W16
+[AM-2241](https://jira.accessmicro.vn/browse/AM-2241),Bug,Migrate refund queue processor for production,Done,Dinh Quang Huy,CRM,Inventory,3,"W08,W15"
+[AM-2242](https://jira.accessmicro.vn/browse/AM-2242),Spike,Add email template parser for scale test,In Progress,Dinh Quang Huy,CRM,Billing,5,W07
+[AM-2243](https://jira.accessmicro.vn/browse/AM-2243),Bug,Fix monthly report export for audit,Done,Bui Khanh Linh,CRM,Checkout,4,"W08,W09"
+[AM-2244](https://jira.accessmicro.vn/browse/AM-2244),Task,Investigate RBAC permission matrix for audit,In Progress,Truong Tuan Kiet,Finance,Auth,1,"W10,W16"
+[AM-2245](https://jira.accessmicro.vn/browse/AM-2245),Spike,Fix JWT rotation policy for migration,To Do,Nguyen Van An,Operations,Billing,4,"W05,W06"
+[AM-2246](https://jira.accessmicro.vn/browse/AM-2246),Task,Migrate monthly report export for production,In Progress,Hoang Duc Minh,Finance,Inventory,5,"W10,W13"
+[AM-2247](https://jira.accessmicro.vn/browse/AM-2247),Improvement,Fix stock sync worker for scale test,In Progress,Vo Gia Huy,Operations,Partner Portal,3,W12
+[AM-2248](https://jira.accessmicro.vn/browse/AM-2248),Story,Migrate JWT rotation policy for audit,Done,Nguyen Van An,Platform,Partner Portal,1,W03
+[AM-2249](https://jira.accessmicro.vn/browse/AM-2249),Story,Investigate stock sync worker for scale test,Done,Do Thanh Son,CRM,Checkout,3,W16
+[AM-2250](https://jira.accessmicro.vn/browse/AM-2250),Bug,Optimize stock sync worker for onboarding,In Progress,Vo Gia Huy,CRM,Reporting,5,"W12,W14"
+[AM-2251](https://jira.accessmicro.vn/browse/AM-2251),Task,Optimize mobile push dispatcher for audit,To Do,Phan Ngoc Bich,Platform,Reporting,4,"W10,W16"
+[AM-2252](https://jira.accessmicro.vn/browse/AM-2252),Story,Fix JWT rotation policy for production,To Do,Phan Ngoc Bich,Data,Checkout,2,W05
+[AM-2253](https://jira.accessmicro.vn/browse/AM-2253),Improvement,Optimize payment retry flow for migration,In Progress,Bui Khanh Linh,Operations,Reporting,3,W16
+[AM-2254](https://jira.accessmicro.vn/browse/AM-2254),Spike,Fix invoice rendering for audit,In Progress,Pham Quynh Nhu,CRM,Billing,1,W16
+[AM-2255](https://jira.accessmicro.vn/browse/AM-2255),Improvement,Implement payment retry flow for migration,In Progress,Phan Ngoc Bich,Growth,Partner Portal,2,W13
+[AM-2256](https://jira.accessmicro.vn/browse/AM-2256),Spike,Validate email template parser for scale test,In Progress,Dinh Quang Huy,Platform,Notification,4,W08
+[AM-2257](https://jira.accessmicro.vn/browse/AM-2257),Spike,Fix monthly report export for audit,To Do,Tran Minh Chau,Operations,Checkout,5,"W13,W15"
+[AM-2258](https://jira.accessmicro.vn/browse/AM-2258),Story,Add checkout validation for enterprise tenants,To Do,Dang Thu Trang,Platform,Reporting,3,W10
+[AM-2259](https://jira.accessmicro.vn/browse/AM-2259),Story,Fix payment retry flow for audit,In Progress,Vu Hong Ngoc,Data,Billing,4,W16
