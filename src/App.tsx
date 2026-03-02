@@ -1,14 +1,13 @@
-import { type ReactNode, useEffect, useMemo, useState } from "react";
-import * as XLSX from "xlsx";
+import { type ReactNode, useEffect, useMemo, useRef, useState } from "react";
 import { AlertTriangle, ChevronDown, Circle, Upload } from "lucide-react";
 import { Bar, BarChart, Cell, Legend, Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { VirtualTable } from "@/components/common/virtual-table";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
-type RawRow = Record<string, string | number>;
 type Status = "open" | "inprogress" | "done" | "other";
 
 type Task = {
@@ -23,50 +22,6 @@ type Task = {
   module: string;
   status: Status;
 };
-
-const COLUMN_ALIASES = {
-  taskId: ["key", "taskid", "task id", "id", "ticketid", "jiraid"],
-  issueType: ["issuetype", "issue type", "type"],
-  assignee: ["assignee"],
-  storyPoint: ["storypoints", "story points", "storypoint", "story point"],
-  name: ["summary", "name", "taskname", "task name"],
-  labels: ["labels", "label"],
-  epicLink: ["epiclink", "epic link", "epic"],
-  module: ["modulename", "module name", "module", "project", "projectname"],
-  status: ["status", "state"]
-} as const;
-
-function normalizeText(value: string) {
-  return value.toLowerCase().replace(/[_\s-]+/g, "").trim();
-}
-
-function detectColumn(columns: string[], aliases: readonly string[]) {
-  const normalizedAliases = aliases.map(normalizeText);
-  return columns.find((column) => normalizedAliases.includes(normalizeText(column))) ?? "";
-}
-
-function normalizeStatus(value: string | number | undefined): Status {
-  const v = String(value ?? "").toLowerCase().replace(/\s+/g, "");
-  if (v === "open" || v === "todo" || v === "to-do" || v === "new" || v === "backlog") return "open";
-  if (v === "inprogress" || v === "in-progress" || v === "doing" || v === "progress") return "inprogress";
-  if (v === "done" || v === "closed") return "done";
-  return "other";
-}
-
-function parseWeekLabels(value: string | number | undefined) {
-  const raw = String(value ?? "").replace(/[\[\]"]/g, " ");
-  const weeks = raw
-    .split(/[;,|\s]+/)
-    .map((item) => item.trim().toUpperCase())
-    .filter((item) => /^W\d{1,2}$/.test(item));
-  return Array.from(new Set(weeks));
-}
-
-function storyPointValue(value: string | number | undefined) {
-  const n = Number(value);
-  if (!Number.isFinite(n)) return 0;
-  return Math.max(1, Math.min(5, Math.round(n)));
-}
 
 function weekIndex(week: string) {
   const m = week.match(/^W(\d{1,2})$/i);
@@ -129,36 +84,21 @@ function weekdayName(date: Date) {
   return date.toLocaleDateString("en-US", { weekday: "long" });
 }
 
-function parseTaskKeyCell(value: string | number | undefined) {
-  const raw = String(value ?? "").trim();
-  const markdown = raw.match(/^\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)$/i);
-  if (markdown) return { taskId: markdown[1], taskUrl: markdown[2] };
+type ParseWorkerResponse =
+  | { type: "success"; requestId: number; rowCount: number; tasks: Task[] }
+  | { type: "error"; requestId: number; rowCount: number; error: string };
 
-  const urlMatch = raw.match(/https?:\/\/[^\s|,;]+/i);
-  const keyMatch = raw.match(/[A-Z][A-Z0-9]+-\d+/i);
-
-  if (urlMatch) {
-    const taskUrl = urlMatch[0];
-    const keyFromUrl = taskUrl.match(/[A-Z][A-Z0-9]+-\d+/i)?.[0];
-    return { taskId: (keyMatch?.[0] || keyFromUrl || raw).toUpperCase(), taskUrl };
-  }
-
-  if (keyMatch) return { taskId: keyMatch[0].toUpperCase(), taskUrl: "" };
-  return { taskId: raw || "-", taskUrl: "" };
+function sanitizeCell(value: string | number) {
+  return String(value ?? "").replace(/\r?\n/g, " ").replace(/\t/g, " ").trim();
 }
 
-function escapeCsv(value: string | number) {
-  const text = String(value ?? "");
-  if (text.includes(",") || text.includes("\n") || text.includes("\"")) {
-    return `"${text.replace(/\"/g, '""')}"`;
-  }
-  return text;
-}
-
-function toCsv(headers: string[], rows: Array<Array<string | number>>) {
-  const headerLine = headers.map(escapeCsv).join(",");
-  const rowLines = rows.map((row) => row.map(escapeCsv).join(","));
-  return [headerLine, ...rowLines].join("\n");
+function escapeHtml(value: string | number) {
+  return sanitizeCell(value)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
 }
 
 function displayCount(value: number) {
@@ -207,10 +147,12 @@ function AccordionSection({
 }
 
 export default function App() {
-  const [rawRows, setRawRows] = useState<RawRow[]>([]);
+  const [rowCount, setRowCount] = useState(0);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [error, setError] = useState("");
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [isParsing, setIsParsing] = useState(false);
+  const uploadTokenRef = useRef(0);
   const [now, setNow] = useState(new Date());
   const currentWeekInfo = isoWeekInfo(now);
   const currentWeekCode = `W${twoDigits(currentWeekInfo.week)}`;
@@ -235,77 +177,40 @@ export default function App() {
   const handleFileUpload = async (file: File | null) => {
     if (!file) return;
 
+    const currentToken = ++uploadTokenRef.current;
+    setIsParsing(true);
+
     try {
       setError("");
       setToast(null);
       const data = await file.arrayBuffer();
-      const workbook = XLSX.read(data, { type: "array" });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const parsed = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
-
-      const rows: RawRow[] = parsed.map((row) => {
-        const obj: RawRow = {};
-        Object.entries(row).forEach(([k, v]) => {
-          obj[String(k).trim()] = typeof v === "number" ? v : String(v ?? "").trim();
+      const worker = new Worker(new URL("./excel.worker.ts", import.meta.url), { type: "module" });
+      let workerResult: ParseWorkerResponse;
+      try {
+        workerResult = await new Promise<ParseWorkerResponse>((resolve, reject) => {
+          const requestId = currentToken;
+          worker.onmessage = (event: MessageEvent<ParseWorkerResponse>) => {
+            if (event.data.requestId !== requestId) return;
+            resolve(event.data);
+          };
+          worker.onerror = () => reject(new Error("Worker parse failed"));
+          worker.postMessage({ type: "parse", requestId, buffer: data }, [data]);
         });
-        return obj;
-      });
+      } finally {
+        worker.terminate();
+      }
 
-      if (!rows.length) {
-        setError("The file has no data.");
-        setRawRows([]);
+      if (currentToken !== uploadTokenRef.current) return;
+
+      if (workerResult.type === "error") {
+        setError(workerResult.error);
+        setRowCount(workerResult.rowCount);
         setTasks([]);
         return;
       }
 
-      const columns = Array.from(new Set(rows.flatMap((r) => Object.keys(r)).filter(Boolean)));
-
-      const colTaskId = detectColumn(columns, COLUMN_ALIASES.taskId);
-      const colIssueType = detectColumn(columns, COLUMN_ALIASES.issueType);
-      const colAssignee = detectColumn(columns, COLUMN_ALIASES.assignee);
-      const colStoryPoint = detectColumn(columns, COLUMN_ALIASES.storyPoint);
-      const colName = detectColumn(columns, COLUMN_ALIASES.name);
-      const colLabels = detectColumn(columns, COLUMN_ALIASES.labels);
-      const colEpicLink = detectColumn(columns, COLUMN_ALIASES.epicLink);
-      const colModule = detectColumn(columns, COLUMN_ALIASES.module);
-      const colStatus = detectColumn(columns, COLUMN_ALIASES.status);
-
-      const missing: string[] = [];
-      if (!colTaskId) missing.push("Key");
-      if (!colIssueType) missing.push("Issue Type");
-      if (!colAssignee) missing.push("Assignee");
-      if (!colStoryPoint) missing.push("Story Points");
-      if (!colName) missing.push("Summary");
-      if (!colLabels) missing.push("Labels");
-      if (!colEpicLink) missing.push("Epic Link");
-      if (!colModule) missing.push("ModuleName");
-      if (!colStatus) missing.push("Status");
-
-      if (missing.length) {
-        setError(`Missing required columns: ${missing.join(", ")}`);
-        setRawRows(rows);
-        setTasks([]);
-        return;
-      }
-
-      const parsedTasks: Task[] = rows.map((row) => {
-        const keyInfo = parseTaskKeyCell(row[colTaskId]);
-        return {
-          taskId: keyInfo.taskId,
-          taskUrl: keyInfo.taskUrl,
-          issueType: String(row[colIssueType] || "-"),
-          assignee: String(row[colAssignee] || "Unknown"),
-          storyPoint: storyPointValue(row[colStoryPoint]),
-          name: String(row[colName] || ""),
-          weeks: parseWeekLabels(row[colLabels]),
-          epicLink: String(row[colEpicLink] || "-"),
-          module: String(row[colModule] || "Unknown"),
-          status: normalizeStatus(row[colStatus])
-        };
-      });
-
-      setRawRows(rows);
-      setTasks(parsedTasks);
+      setRowCount(workerResult.rowCount);
+      setTasks(workerResult.tasks);
       setProjectAllWeeks(true);
       setProjectWeekFilters([]);
       setProjectModuleFilter("all");
@@ -313,15 +218,18 @@ export default function App() {
       setAssigneeAllWeeks(true);
       setAssigneeWeekFilters([]);
       const weekSet = new Set<string>();
-      parsedTasks.forEach((task) => task.weeks.forEach((week) => weekSet.add(week)));
+      workerResult.tasks.forEach((task) => task.weeks.forEach((week) => weekSet.add(week)));
       const sortedWeeks = Array.from(weekSet).sort((a, b) => weekIndex(a) - weekIndex(b));
       setCompareWeekA(sortedWeeks.length >= 2 ? sortedWeeks[sortedWeeks.length - 2] : sortedWeeks[0] ?? "");
       setCompareWeekB(sortedWeeks.length >= 1 ? sortedWeeks[sortedWeeks.length - 1] : "");
       setManagerWeek(sortedWeeks.includes(currentWeekCode) ? currentWeekCode : (sortedWeeks[sortedWeeks.length - 1] ?? ""));
     } catch {
+      if (currentToken !== uploadTokenRef.current) return;
       setError("Unable to read file. Please check Excel/CSV format.");
-      setRawRows([]);
+      setRowCount(0);
       setTasks([]);
+    } finally {
+      if (currentToken === uploadTokenRef.current) setIsParsing(false);
     }
   };
 
@@ -757,37 +665,56 @@ export default function App() {
 
   const copyCsv = async (kind: "project" | "assignee") => {
     try {
-      let csv = "";
       if (kind === "project") {
-        csv = toCsv(
-          ["Module Name", "Assignee", "Task ID", "Issue Type", "Summary", "Epic Link", "Status", "Story Points"],
-          projectRows.map((r) => [
-            r.module,
-            r.assignee,
-            r.taskId,
-            r.issueType,
-            r.taskName,
-            r.epicLink,
-            r.status,
-            r.storyPoint
-          ])
-        );
+        const plainText = projectRows
+          .map((r) =>
+            [
+              r.showModule ? r.module : "",
+              r.showAssignee ? r.assignee : "",
+              r.taskId,
+              r.taskName,
+              statusLabel(r.status),
+              r.storyPoint
+            ]
+              .map(sanitizeCell)
+              .join("\t")
+          )
+          .join("\n");
+
+        const htmlRows = projectRows
+          .map((r) => {
+            const moduleCell = r.showModule ? `<td rowspan="${r.moduleRowSpan}">${escapeHtml(r.module)}</td>` : "";
+            const assigneeCell = r.showAssignee ? `<td rowspan="${r.assigneeRowSpan}">${escapeHtml(r.assignee)}</td>` : "";
+            return `<tr>${moduleCell}${assigneeCell}<td>${escapeHtml(r.taskId)}</td><td>${escapeHtml(r.taskName)}</td><td>${escapeHtml(
+              statusLabel(r.status)
+            )}</td><td>${escapeHtml(r.storyPoint)}</td></tr>`;
+          })
+          .join("");
+        const htmlTable = `<table><tbody>${htmlRows}</tbody></table>`;
+
+        if (navigator.clipboard.write && typeof ClipboardItem !== "undefined") {
+          await navigator.clipboard.write([
+            new ClipboardItem({
+              "text/plain": new Blob([plainText], { type: "text/plain" }),
+              "text/html": new Blob([htmlTable], { type: "text/html" })
+            })
+          ]);
+        } else {
+          await navigator.clipboard.writeText(plainText);
+        }
+
+        showToast("Table copied: project view", "success");
+        return;
       }
 
       if (kind === "assignee") {
-        csv = toCsv(
-          ["Assignee", "C1", "C2", "C3", "C4", "C5"],
-          assigneeRows.map((r) => [r.assignee, r.point1, r.point2, r.point3, r.point4, r.point5])
-        );
+        const plainText = assigneeRows
+          .map((r) => [r.assignee, r.point1, r.point2, r.point3, r.point4, r.point5].map(sanitizeCell).join("\t"))
+          .join("\n");
+        await navigator.clipboard.writeText(plainText);
+        showToast("Table copied: assignee view", "success");
+        return;
       }
-
-      await navigator.clipboard.writeText(csv);
-      showToast(
-        kind === "project"
-          ? "CSV copied: project view"
-          : "CSV copied: assignee view",
-        "success"
-      );
     } catch {
       showToast("Copy failed. Please check clipboard permission.", "error");
     }
@@ -795,7 +722,7 @@ export default function App() {
 
   const totalTasks = tasks.length;
   const withWeek = tasks.filter((task) => task.weeks.length > 0).length;
-  const hasData = rawRows.length > 0;
+  const hasData = rowCount > 0;
 
   return (
     <main className="mx-auto max-w-[1300px] p-4 md:p-8">
@@ -842,14 +769,22 @@ export default function App() {
               <h1 className="text-sm font-semibold tracking-tight">Data Input</h1>
             </div>
             <span className="text-xs text-muted-foreground">
-              {hasData ? "Data loaded - click to upload new file" : "Upload file to start"}
+              {isParsing ? "Parsing file in background..." : hasData ? "Data loaded - click to upload new file" : "Upload file to start"}
             </span>
           </summary>
           <div className="mt-3 grid gap-2 sm:grid-cols-[220px,1fr] sm:items-center">
             <Label htmlFor="file" className="text-xs text-muted-foreground">Excel/CSV File</Label>
-            <Input id="file" type="file" accept=".xlsx,.xls,.csv" onChange={(e) => handleFileUpload(e.target.files?.[0] ?? null)} className="h-9 text-sm" />
+            <Input
+              id="file"
+              type="file"
+              accept=".xlsx,.xls,.csv"
+              disabled={isParsing}
+              onChange={(e) => handleFileUpload(e.target.files?.[0] ?? null)}
+              className="h-9 text-sm"
+            />
           </div>
         </details>
+        {isParsing && <p className="mt-3 text-sm text-primary">Processing data in Web Worker...</p>}
         {error && <p className="mt-3 text-sm text-red-600">{error}</p>}
       </section>
 
@@ -988,54 +923,57 @@ export default function App() {
             </div>
           </div>
 
-          <div className="max-h-[560px] overflow-y-auto rounded-xl border border-white/70 bg-white shadow-sm">
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr>
-                  <th rowSpan={2} className="sticky top-0 z-30 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Module Name</th>
-                  <th rowSpan={2} className="sticky top-0 z-30 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Assignee</th>
-                  <th colSpan={6} className="sticky top-0 z-30 bg-slate-100 px-2 py-2 text-center font-medium text-slate-700">Task Details</th>
-                </tr>
-                <tr>
-                  <th className="sticky top-9 z-30 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Task ID</th>
-                  <th className="sticky top-9 z-30 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Task Name</th>
-                  <th className="sticky top-9 z-30 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Status</th>
-                  <th className="sticky top-9 z-30 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Story Point</th>
-                  <th className="sticky top-9 z-30 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Weeks</th>
-                  <th className="sticky top-9 z-30 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Warning</th>
-                </tr>
-              </thead>
-              <tbody>
-                {projectRows.map((row) => (
-                  <tr key={`${row.module}-${row.assignee}-${row.taskKey}`} className="border-b transition-colors hover:bg-slate-50">
-                    {row.showModule && (
-                      <td rowSpan={row.moduleRowSpan} className="p-2 align-top font-medium">{row.module}</td>
-                    )}
-                    {row.showAssignee && (
-                      <td rowSpan={row.assigneeRowSpan} className="p-2 align-top">{row.assignee}</td>
-                    )}
-                    <td className="p-2">
-                      {row.taskUrl ? (
-                        <a href={row.taskUrl} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">{row.taskId}</a>
-                      ) : row.taskId}
-                    </td>
-                    <td className="p-2">{row.taskName}</td>
-                    <td className="p-2"><StatusBadge status={row.status} /></td>
-                    <td className="p-2">{row.storyPoint}</td>
-                    <td className="p-2">{row.weeks}</td>
-                    <td className="p-2">
-                      {row.prevDoneStillAppear ? (
-                        <span title={`Task was done in previous week(s) (${row.prevWeek}) but still appears in selected weeks`} className="inline-flex items-center gap-1 text-amber-600">
-                          <AlertTriangle className="h-4 w-4" />
-                          done last week
-                        </span>
-                      ) : "-"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <VirtualTable
+            rows={projectRows}
+            height={560}
+            getRowKey={(row, index) => `${row.module}-${row.assignee}-${row.taskKey}-${index}`}
+            columns={[
+              {
+                key: "module",
+                label: "Module Name",
+                cellClassName: "p-2 align-top font-medium",
+                render: (row) => (row.showModule ? row.module : "")
+              },
+              {
+                key: "assignee",
+                label: "Assignee",
+                cellClassName: "p-2 align-top",
+                render: (row) => (row.showAssignee ? row.assignee : "")
+              },
+              {
+                key: "taskId",
+                label: "Task ID",
+                render: (row) =>
+                  row.taskUrl ? (
+                    <a href={row.taskUrl} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">
+                      {row.taskId}
+                    </a>
+                  ) : (
+                    row.taskId
+                  )
+              },
+              { key: "taskName", label: "Task Name", render: (row) => row.taskName },
+              { key: "status", label: "Status", render: (row) => <StatusBadge status={row.status} /> },
+              { key: "storyPoint", label: "Story Point", render: (row) => row.storyPoint },
+              { key: "weeks", label: "Weeks", render: (row) => row.weeks },
+              {
+                key: "warning",
+                label: "Warning",
+                render: (row) =>
+                  row.prevDoneStillAppear ? (
+                    <span
+                      title={`Task was done in previous week(s) (${row.prevWeek}) but still appears in selected weeks`}
+                      className="inline-flex items-center gap-1 text-amber-600"
+                    >
+                      <AlertTriangle className="h-4 w-4" />
+                      done last week
+                    </span>
+                  ) : (
+                    "-"
+                  )
+              }
+            ]}
+          />
         </AccordionSection>
 
         <AccordionSection
@@ -1101,34 +1039,20 @@ export default function App() {
               </ResponsiveContainer>
             </div>
 
-            <div className="max-h-[460px] overflow-y-auto rounded-xl border border-white/70 bg-white shadow-sm">
-              <table className="w-full border-collapse text-sm">
-                <thead>
-                  <tr>
-                    <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Assignee</th>
-                    <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">C1</th>
-                    <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">C2</th>
-                    <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">C3</th>
-                    <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">C4</th>
-                    <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">C5</th>
-                    <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {assigneeRows.map((row) => (
-                    <tr key={row.assignee} className="border-b transition-colors hover:bg-slate-50">
-                      <td className="p-2">{row.assignee}</td>
-                      <td className="p-2">{displayCount(row.point1)}</td>
-                      <td className="p-2">{displayCount(row.point2)}</td>
-                      <td className="p-2">{displayCount(row.point3)}</td>
-                      <td className="p-2">{displayCount(row.point4)}</td>
-                      <td className="p-2">{displayCount(row.point5)}</td>
-                      <td className="p-2">{displayCount(row.total)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <VirtualTable
+              rows={assigneeRows}
+              height={460}
+              getRowKey={(row) => row.assignee}
+              columns={[
+                { key: "assignee", label: "Assignee", render: (row) => row.assignee },
+                { key: "point1", label: "C1", render: (row) => displayCount(row.point1) },
+                { key: "point2", label: "C2", render: (row) => displayCount(row.point2) },
+                { key: "point3", label: "C3", render: (row) => displayCount(row.point3) },
+                { key: "point4", label: "C4", render: (row) => displayCount(row.point4) },
+                { key: "point5", label: "C5", render: (row) => displayCount(row.point5) },
+                { key: "total", label: "Total", render: (row) => displayCount(row.total) }
+              ]}
+            />
           </div>
         </AccordionSection>
 
@@ -1203,46 +1127,40 @@ export default function App() {
             <p className="mb-3 text-sm text-amber-700">Please select 2 different weeks for a valid comparison.</p>
           )}
 
-          <div className="max-h-[520px] overflow-y-auto rounded-xl border border-white/70 bg-white shadow-sm">
-            <table className="w-full border-collapse text-sm">
-              <thead>
-                <tr>
-                  <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Module</th>
-                  <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Assignee</th>
-                  <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Task ID</th>
-                  <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Task Name</th>
-                  <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Status {compareWeekA || "A"}</th>
-                  <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Status {compareWeekB || "B"}</th>
-                  <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Transition</th>
-                  <th className="sticky top-0 z-20 bg-slate-100 px-2 py-2 text-left font-medium text-slate-700">Warning</th>
-                </tr>
-              </thead>
-              <tbody>
-                {compareGroupedRows.map((row) => (
-                  <tr key={row.taskKey} className="border-b transition-colors hover:bg-slate-50">
-                    {row.showModule && (
-                      <td rowSpan={row.moduleRowSpan} className="p-2 align-top font-medium">{row.module}</td>
-                    )}
-                    {row.showAssignee && (
-                      <td rowSpan={row.assigneeRowSpan} className="p-2 align-top">{row.assignee}</td>
-                    )}
-                    <td className="p-2">{row.taskId}</td>
-                    <td className="p-2">{row.taskName}</td>
-                    <td className="p-2"><StatusBadge status={row.statusA} /></td>
-                    <td className="p-2"><StatusBadge status={row.statusB} /></td>
-                    <td className="p-2">{row.transition}</td>
-                    <td className="p-2">
-                      {row.invalidDoneBoth
-                        ? "Task done in both weeks (invalid)"
-                        : row.missingNextWeekLabelNeedUpdate
-                          ? "Not done, missing next-week label"
-                          : "-"}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <VirtualTable
+            rows={compareGroupedRows}
+            height={520}
+            getRowKey={(row, index) => `${row.taskKey}-${index}`}
+            columns={[
+              {
+                key: "module",
+                label: "Module",
+                cellClassName: "p-2 align-top font-medium",
+                render: (row) => (row.showModule ? row.module : "")
+              },
+              {
+                key: "assignee",
+                label: "Assignee",
+                cellClassName: "p-2 align-top",
+                render: (row) => (row.showAssignee ? row.assignee : "")
+              },
+              { key: "taskId", label: "Task ID", render: (row) => row.taskId },
+              { key: "taskName", label: "Task Name", render: (row) => row.taskName },
+              { key: "statusA", label: `Status ${compareWeekA || "A"}`, render: (row) => <StatusBadge status={row.statusA} /> },
+              { key: "statusB", label: `Status ${compareWeekB || "B"}`, render: (row) => <StatusBadge status={row.statusB} /> },
+              { key: "transition", label: "Transition", render: (row) => row.transition },
+              {
+                key: "warning",
+                label: "Warning",
+                render: (row) =>
+                  row.invalidDoneBoth
+                    ? "Task done in both weeks (invalid)"
+                    : row.missingNextWeekLabelNeedUpdate
+                      ? "Not done, missing next-week label"
+                      : "-"
+              }
+            ]}
+          />
 
           {!compareRows.length && <div className="py-5 text-center text-sm text-muted-foreground">No comparison data for selected weeks.</div>}
         </AccordionSection>
@@ -1385,7 +1303,7 @@ export default function App() {
       </section>
       )}
 
-      {!rawRows.length && !error && <div className="py-8 text-center text-sm text-muted-foreground">Upload a file to start analysis.</div>}
+      {!rowCount && !error && <div className="py-8 text-center text-sm text-muted-foreground">Upload a file to start analysis.</div>}
 
       {toast && (
         <div className={`fixed bottom-6 right-6 z-[100] rounded-lg px-4 py-2 text-sm text-white shadow-lg ${toast.type === "success" ? "bg-emerald-600" : "bg-red-600"}`}>
