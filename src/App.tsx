@@ -23,6 +23,18 @@ type Task = {
   status: Status;
 };
 
+type SnapshotTask = {
+  taskKey: string;
+  taskId: string;
+  taskUrl: string;
+  taskName: string;
+  module: string;
+  assignee: string;
+  storyPoint: number;
+  status: Status;
+  weeks: string[];
+};
+
 function weekIndex(week: string) {
   const m = week.match(/^W(\d{1,2})$/i);
   return m ? Number(m[1]) : 999;
@@ -146,6 +158,72 @@ function AccordionSection({
   );
 }
 
+async function parseTasksWithWorker(file: File, requestId: number) {
+  const data = await file.arrayBuffer();
+  const worker = new Worker(new URL("./excel.worker.ts", import.meta.url), { type: "module" });
+  try {
+    return await new Promise<ParseWorkerResponse>((resolve, reject) => {
+      worker.onmessage = (event: MessageEvent<ParseWorkerResponse>) => {
+        if (event.data.requestId !== requestId) return;
+        resolve(event.data);
+      };
+      worker.onerror = () => reject(new Error("Worker parse failed"));
+      worker.postMessage({ type: "parse", requestId, buffer: data }, [data]);
+    });
+  } finally {
+    worker.terminate();
+  }
+}
+
+function aggregateSnapshotTasks(tasks: Task[]) {
+  const map = new Map<string, SnapshotTask>();
+  tasks.forEach((task) => {
+    const taskKey = task.taskId || `${task.module}||${task.name}`;
+    const prev = map.get(taskKey);
+    if (!prev) {
+      map.set(taskKey, {
+        taskKey,
+        taskId: task.taskId || "-",
+        taskUrl: task.taskUrl,
+        taskName: task.name || "-",
+        module: task.module,
+        assignee: task.assignee,
+        storyPoint: task.storyPoint,
+        status: task.status,
+        weeks: [...task.weeks].sort((a, b) => weekIndex(a) - weekIndex(b))
+      });
+      return;
+    }
+
+    const mergedWeeks = Array.from(new Set([...prev.weeks, ...task.weeks])).sort((a, b) => weekIndex(a) - weekIndex(b));
+    map.set(taskKey, {
+      ...prev,
+      taskUrl: prev.taskUrl || task.taskUrl,
+      taskName: prev.taskName === "-" ? task.name || "-" : prev.taskName,
+      module: prev.module || task.module,
+      assignee: prev.assignee || task.assignee,
+      storyPoint: prev.storyPoint || task.storyPoint,
+      status: statusIndex(task.status) > statusIndex(prev.status) ? task.status : prev.status,
+      weeks: mergedWeeks
+    });
+  });
+  return Array.from(map.values());
+}
+
+function snapshotNoteForStatuses(statusA: Status | "-", statusB: Status | "-") {
+  if (statusA === statusB && (statusA === "open" || statusA === "inprogress")) {
+    return "Still not done in both snapshots - follow up with owner";
+  }
+  if (statusA === "open" && statusB === "inprogress") return "Work started after the previous snapshot";
+  if (statusA === "open" && statusB === "done") return "Task moved from open to done";
+  if (statusA === "inprogress" && statusB === "done") return "Task completed in the latest snapshot";
+  if (statusA === "inprogress" && statusB === "open") return "Status moved backward - verify task update";
+  if (statusA === "done" && statusB !== "done" && statusB !== "-") return "Task reopened after being done";
+  if (statusA === "-" && statusB !== "-") return "Newly added in the latest snapshot";
+  if (statusA !== "-" && statusB === "-") return "Missing in the latest snapshot - verify whether it was dropped";
+  return "Review status update";
+}
+
 export default function App() {
   const [rowCount, setRowCount] = useState(0);
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -157,17 +235,28 @@ export default function App() {
   const currentWeekInfo = isoWeekInfo(now);
   const currentWeekCode = `W${twoDigits(currentWeekInfo.week)}`;
   const currentRange = weekRangeMonToFri(now);
-  const [activeTab, setActiveTab] = useState<"main" | "manager">("main");
+  const [activeTab, setActiveTab] = useState<"main" | "manager" | "snapshot">("main");
 
   const [projectAllWeeks, setProjectAllWeeks] = useState(true);
   const [projectWeekFilters, setProjectWeekFilters] = useState<string[]>([]);
-  const [projectModuleFilter, setProjectModuleFilter] = useState("all");
+  const [projectModuleFilters, setProjectModuleFilters] = useState<string[]>([]);
   const [projectAssigneeFilter, setProjectAssigneeFilter] = useState("all");
   const [assigneeAllWeeks, setAssigneeAllWeeks] = useState(true);
   const [assigneeWeekFilters, setAssigneeWeekFilters] = useState<string[]>([]);
   const [compareWeekA, setCompareWeekA] = useState("");
   const [compareWeekB, setCompareWeekB] = useState("");
   const [managerWeek, setManagerWeek] = useState("");
+  const [snapshotBaseTasks, setSnapshotBaseTasks] = useState<Task[]>([]);
+  const [snapshotCurrentTasks, setSnapshotCurrentTasks] = useState<Task[]>([]);
+  const [snapshotBaseName, setSnapshotBaseName] = useState("");
+  const [snapshotCurrentName, setSnapshotCurrentName] = useState("");
+  const [snapshotError, setSnapshotError] = useState("");
+  const [snapshotShowChanged, setSnapshotShowChanged] = useState(true);
+  const [snapshotShowStillActive, setSnapshotShowStillActive] = useState(true);
+  const [isParsingSnapshotBase, setIsParsingSnapshotBase] = useState(false);
+  const [isParsingSnapshotCurrent, setIsParsingSnapshotCurrent] = useState(false);
+  const snapshotBaseTokenRef = useRef(0);
+  const snapshotCurrentTokenRef = useRef(0);
 
   useEffect(() => {
     const timer = window.setInterval(() => setNow(new Date()), 1000);
@@ -183,22 +272,7 @@ export default function App() {
     try {
       setError("");
       setToast(null);
-      const data = await file.arrayBuffer();
-      const worker = new Worker(new URL("./excel.worker.ts", import.meta.url), { type: "module" });
-      let workerResult: ParseWorkerResponse;
-      try {
-        workerResult = await new Promise<ParseWorkerResponse>((resolve, reject) => {
-          const requestId = currentToken;
-          worker.onmessage = (event: MessageEvent<ParseWorkerResponse>) => {
-            if (event.data.requestId !== requestId) return;
-            resolve(event.data);
-          };
-          worker.onerror = () => reject(new Error("Worker parse failed"));
-          worker.postMessage({ type: "parse", requestId, buffer: data }, [data]);
-        });
-      } finally {
-        worker.terminate();
-      }
+      const workerResult = await parseTasksWithWorker(file, currentToken);
 
       if (currentToken !== uploadTokenRef.current) return;
 
@@ -213,7 +287,7 @@ export default function App() {
       setTasks(workerResult.tasks);
       setProjectAllWeeks(true);
       setProjectWeekFilters([]);
-      setProjectModuleFilter("all");
+      setProjectModuleFilters([]);
       setProjectAssigneeFilter("all");
       setAssigneeAllWeeks(true);
       setAssigneeWeekFilters([]);
@@ -230,6 +304,59 @@ export default function App() {
       setTasks([]);
     } finally {
       if (currentToken === uploadTokenRef.current) setIsParsing(false);
+    }
+  };
+
+  const handleSnapshotFileUpload = async (kind: "base" | "current", file: File | null) => {
+    if (!file) return;
+
+    const tokenRef = kind === "base" ? snapshotBaseTokenRef : snapshotCurrentTokenRef;
+    const currentToken = ++tokenRef.current;
+
+    setSnapshotError("");
+    setToast(null);
+    if (kind === "base") setIsParsingSnapshotBase(true);
+    else setIsParsingSnapshotCurrent(true);
+
+    try {
+      const workerResult = await parseTasksWithWorker(file, currentToken);
+      if (currentToken !== tokenRef.current) return;
+
+      if (workerResult.type === "error") {
+        setSnapshotError(workerResult.error);
+        if (kind === "base") {
+          setSnapshotBaseTasks([]);
+          setSnapshotBaseName("");
+        } else {
+          setSnapshotCurrentTasks([]);
+          setSnapshotCurrentName("");
+        }
+        return;
+      }
+
+      if (kind === "base") {
+        setSnapshotBaseTasks(workerResult.tasks);
+        setSnapshotBaseName(file.name);
+      } else {
+        setSnapshotCurrentTasks(workerResult.tasks);
+        setSnapshotCurrentName(file.name);
+      }
+      showToast(kind === "base" ? "Baseline snapshot loaded" : "Latest snapshot loaded", "success");
+    } catch {
+      if (currentToken !== tokenRef.current) return;
+      setSnapshotError("Unable to read snapshot file. Please check Excel/CSV format.");
+      if (kind === "base") {
+        setSnapshotBaseTasks([]);
+        setSnapshotBaseName("");
+      } else {
+        setSnapshotCurrentTasks([]);
+        setSnapshotCurrentName("");
+      }
+    } finally {
+      if (currentToken === tokenRef.current) {
+        if (kind === "base") setIsParsingSnapshotBase(false);
+        else setIsParsingSnapshotCurrent(false);
+      }
     }
   };
 
@@ -260,11 +387,11 @@ export default function App() {
         projectAllWeeks ||
         projectWeekFilters.length === 0 ||
         task.weeks.some((week) => projectWeekFilters.includes(week));
-      const matchModule = projectModuleFilter === "all" || task.module === projectModuleFilter;
+      const matchModule = projectModuleFilters.length === 0 || projectModuleFilters.includes(task.module);
       if (matchWeek && matchModule) set.add(task.assignee);
     });
     return Array.from(set).sort((a, b) => a.localeCompare(b));
-  }, [tasks, projectAllWeeks, projectWeekFilters, projectModuleFilter]);
+  }, [tasks, projectAllWeeks, projectWeekFilters, projectModuleFilters]);
 
   const projectWeekSummary = useMemo(() => {
     if (projectAllWeeks) return "All weeks";
@@ -272,6 +399,12 @@ export default function App() {
     const ordered = allWeeks.filter((week) => projectWeekFilters.includes(week));
     return ordered.join(", ");
   }, [projectAllWeeks, projectWeekFilters, allWeeks]);
+
+  const projectModuleSummary = useMemo(() => {
+    if (!projectModuleFilters.length) return "All projects";
+    const ordered = projectModules.filter((module) => projectModuleFilters.includes(module));
+    return ordered.join(", ");
+  }, [projectModuleFilters, projectModules]);
 
   const projectRows = useMemo(() => {
     const taskStatusByWeek = new Map<string, Map<string, Status>>();
@@ -292,7 +425,7 @@ export default function App() {
       .filter((task) => {
         const matchWeek =
           selectedWeeks.length === 0 || task.weeks.some((week) => selectedWeeks.includes(week));
-        const matchModule = projectModuleFilter === "all" || task.module === projectModuleFilter;
+        const matchModule = projectModuleFilters.length === 0 || projectModuleFilters.includes(task.module);
         const matchAssignee = projectAssigneeFilter === "all" || task.assignee === projectAssigneeFilter;
         return matchWeek && matchModule && matchAssignee;
       })
@@ -352,7 +485,7 @@ export default function App() {
         assigneeRowSpan: assigneeCount.get(assigneeKey) ?? 1
       };
     });
-  }, [tasks, projectAllWeeks, projectWeekFilters, allWeeks, projectModuleFilter, projectAssigneeFilter]);
+  }, [tasks, projectAllWeeks, projectWeekFilters, allWeeks, projectModuleFilters, projectAssigneeFilter]);
 
   const assigneeRows = useMemo(() => {
     const map = new Map<
@@ -658,6 +791,103 @@ export default function App() {
     [compareSummary]
   );
 
+  const snapshotComparisonRows = useMemo(() => {
+    const baseMap = new Map(aggregateSnapshotTasks(snapshotBaseTasks).map((task) => [task.taskKey, task]));
+    const currentMap = new Map(aggregateSnapshotTasks(snapshotCurrentTasks).map((task) => [task.taskKey, task]));
+    const allKeys = Array.from(new Set([...baseMap.keys(), ...currentMap.keys()]));
+
+    return allKeys
+      .map((taskKey) => {
+        const baseTask = baseMap.get(taskKey);
+        const currentTask = currentMap.get(taskKey);
+        const statusA = baseTask?.status ?? "-";
+        const statusB = currentTask?.status ?? "-";
+        const currentTaskRef = currentTask ?? baseTask;
+        const assigneeChanged = !!baseTask && !!currentTask && baseTask.assignee !== currentTask.assignee;
+        const moduleChanged = !!baseTask && !!currentTask && baseTask.module !== currentTask.module;
+        const pointChanged = !!baseTask && !!currentTask && baseTask.storyPoint !== currentTask.storyPoint;
+
+        let category = "Repeated";
+        let needsAttention = false;
+
+        if (baseTask && currentTask) {
+          if (statusA !== statusB) {
+            category = "Status changed";
+          } else if (statusA === "open" || statusA === "inprogress") {
+            category = "Still active";
+            needsAttention = true;
+          } else if (statusA === "done") {
+            category = "Done in both";
+          }
+        } else if (!baseTask && currentTask) {
+          category = "New task";
+        } else if (baseTask && !currentTask) {
+          category = statusA === "done" ? "Missing after done" : "Missing in latest";
+          needsAttention = statusA !== "done";
+        }
+
+        const notes = [
+          snapshotNoteForStatuses(statusA, statusB),
+          assigneeChanged ? `Assignee changed: ${baseTask?.assignee} -> ${currentTask?.assignee}` : "",
+          moduleChanged ? `Project changed: ${baseTask?.module} -> ${currentTask?.module}` : "",
+          pointChanged ? `Story point changed: ${baseTask?.storyPoint} -> ${currentTask?.storyPoint}` : ""
+        ].filter(Boolean);
+
+        return {
+          taskKey,
+          taskId: currentTaskRef?.taskId || "-",
+          taskUrl: currentTaskRef?.taskUrl || baseTask?.taskUrl || "",
+          taskName: currentTaskRef?.taskName || "-",
+          module: currentTask?.module || baseTask?.module || "-",
+          assignee: currentTask?.assignee || baseTask?.assignee || "-",
+          statusA,
+          statusB,
+          weeksA: baseTask?.weeks.join(", ") || "-",
+          weeksB: currentTask?.weeks.join(", ") || "-",
+          category,
+          needsAttention,
+          notes: notes.join(" | ")
+        };
+      })
+      .sort(
+        (a, b) =>
+          Number(b.needsAttention) - Number(a.needsAttention) ||
+          a.category.localeCompare(b.category) ||
+          a.module.localeCompare(b.module) ||
+          a.assignee.localeCompare(b.assignee) ||
+          a.taskId.localeCompare(b.taskId)
+      );
+  }, [snapshotBaseTasks, snapshotCurrentTasks]);
+
+  const snapshotSummary = useMemo(() => {
+    return {
+      total: snapshotComparisonRows.length,
+      changed: snapshotComparisonRows.filter((row) => row.category === "Status changed").length,
+      stillActive: snapshotComparisonRows.filter((row) => row.category === "Still active").length,
+      newTasks: snapshotComparisonRows.filter((row) => row.category === "New task").length,
+      missing: snapshotComparisonRows.filter((row) => row.category === "Missing in latest").length,
+      attention: snapshotComparisonRows.filter((row) => row.needsAttention).length
+    };
+  }, [snapshotComparisonRows]);
+
+  const snapshotCategoryChartData = useMemo(
+    () => [
+      { name: "Status changed", value: snapshotSummary.changed, color: "#0ea5e9" },
+      { name: "Still active", value: snapshotSummary.stillActive, color: "#f59e0b" },
+      { name: "New task", value: snapshotSummary.newTasks, color: "#22c55e" },
+      { name: "Missing in latest", value: snapshotSummary.missing, color: "#ef4444" }
+    ].filter((item) => item.value > 0),
+    [snapshotSummary]
+  );
+
+  const snapshotFilteredRows = useMemo(() => {
+    return snapshotComparisonRows.filter((row) => {
+      if (row.category === "Status changed") return snapshotShowChanged;
+      if (row.category === "Still active") return snapshotShowStillActive;
+      return false;
+    });
+  }, [snapshotComparisonRows, snapshotShowChanged, snapshotShowStillActive]);
+
   const showToast = (message: string, type: "success" | "error") => {
     setToast({ message, type });
     window.setTimeout(() => setToast(null), 2200);
@@ -803,6 +1033,13 @@ export default function App() {
         >
           Manager View
         </button>
+        <button
+          type="button"
+          onClick={() => setActiveTab("snapshot")}
+          className={`rounded-full px-4 py-2 text-sm font-medium ${activeTab === "snapshot" ? "bg-primary text-white" : "bg-white text-slate-700 border"}`}
+        >
+          Snapshot Compare
+        </button>
       </section>
 
       {activeTab === "main" ? (
@@ -857,25 +1094,43 @@ export default function App() {
               </div>
               <div className="space-y-2">
                 <Label>Project (optional)</Label>
-                <Select
-                  value={projectModuleFilter}
-                  onValueChange={(value) => {
-                    setProjectModuleFilter(value);
-                    setProjectAssigneeFilter("all");
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="All projects" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">All projects</SelectItem>
-                    {projectModules.map((module) => (
-                      <SelectItem key={module} value={module}>
-                        {module}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <details className="group relative">
+                  <summary className="flex h-10 cursor-pointer list-none items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm">
+                    <span className="truncate">{projectModuleSummary}</span>
+                  </summary>
+                  <div className="absolute z-20 mt-2 w-full rounded-md border bg-card p-3 shadow-md">
+                    <label className="mb-2 flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={projectModuleFilters.length === 0}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            setProjectModuleFilters([]);
+                            setProjectAssigneeFilter("all");
+                          }
+                        }}
+                      />
+                      All projects
+                    </label>
+                    <div className="max-h-44 space-y-1 overflow-auto border-t pt-2">
+                      {projectModules.map((module) => (
+                        <label key={module} className="flex items-center gap-2 text-sm">
+                          <input
+                            type="checkbox"
+                            checked={projectModuleFilters.includes(module)}
+                            onChange={(e) => {
+                              setProjectModuleFilters((prev) =>
+                                e.target.checked ? [...prev, module] : prev.filter((item) => item !== module)
+                              );
+                              setProjectAssigneeFilter("all");
+                            }}
+                          />
+                          {module}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                </details>
               </div>
               <div className="space-y-2">
                 <Label>Assignee (optional)</Label>
@@ -1165,7 +1420,7 @@ export default function App() {
           {!compareRows.length && <div className="py-5 text-center text-sm text-muted-foreground">No comparison data for selected weeks.</div>}
         </AccordionSection>
       </section>
-      ) : (
+      ) : activeTab === "manager" ? (
       <section className="space-y-5">
         <div className="flex flex-wrap items-end justify-between gap-3 rounded-xl border border-white/70 bg-white p-4 shadow-sm">
           <div>
@@ -1299,6 +1554,195 @@ export default function App() {
               </tbody>
             </table>
           </div>
+        </AccordionSection>
+      </section>
+      ) : (
+      <section className="space-y-5">
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card className="border border-white/70 bg-white/80 shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Baseline Snapshot</CardTitle>
+              <CardDescription>Older exported file to compare from.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Input
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                disabled={isParsingSnapshotBase}
+                onChange={(e) => handleSnapshotFileUpload("base", e.target.files?.[0] ?? null)}
+              />
+              <div className="text-sm text-muted-foreground">
+                {isParsingSnapshotBase ? "Parsing baseline snapshot..." : snapshotBaseName || "No file selected"}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="border border-white/70 bg-white/80 shadow-sm">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Latest Snapshot</CardTitle>
+              <CardDescription>Newer exported file to compare against.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Input
+                type="file"
+                accept=".xlsx,.xls,.csv"
+                disabled={isParsingSnapshotCurrent}
+                onChange={(e) => handleSnapshotFileUpload("current", e.target.files?.[0] ?? null)}
+              />
+              <div className="text-sm text-muted-foreground">
+                {isParsingSnapshotCurrent ? "Parsing latest snapshot..." : snapshotCurrentName || "No file selected"}
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {snapshotError && <div className="rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{snapshotError}</div>}
+
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+          <Card className="border-0 bg-gradient-to-br from-slate-700 to-slate-900 text-white">
+            <CardHeader>
+              <CardDescription className="text-slate-200">Compared Tasks</CardDescription>
+              <CardTitle className="text-white">{snapshotSummary.total}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card className="border-0 bg-gradient-to-br from-sky-500 to-cyan-600 text-white">
+            <CardHeader>
+              <CardDescription className="text-sky-100">Status Changed</CardDescription>
+              <CardTitle className="text-white">{snapshotSummary.changed}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card className="border-0 bg-gradient-to-br from-amber-500 to-orange-600 text-white">
+            <CardHeader>
+              <CardDescription className="text-amber-100">Still Active in Both</CardDescription>
+              <CardTitle className="text-white">{snapshotSummary.stillActive}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card className="border-0 bg-gradient-to-br from-emerald-500 to-green-600 text-white">
+            <CardHeader>
+              <CardDescription className="text-emerald-100">New Tasks</CardDescription>
+              <CardTitle className="text-white">{snapshotSummary.newTasks}</CardTitle>
+            </CardHeader>
+          </Card>
+          <Card className="border-0 bg-gradient-to-br from-rose-500 to-red-600 text-white">
+            <CardHeader>
+              <CardDescription className="text-rose-100">Need Attention</CardDescription>
+              <CardTitle className="text-white">{snapshotSummary.attention}</CardTitle>
+            </CardHeader>
+          </Card>
+        </div>
+
+        <AccordionSection
+          title="Comparison Overview"
+          description="Track repeated tasks, status changes, and items that stay open across both snapshots"
+        >
+          <div className="mb-4 flex flex-wrap gap-4 rounded-xl border border-white/70 bg-white px-4 py-3 text-sm shadow-sm">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={snapshotShowChanged}
+                onChange={(e) => setSnapshotShowChanged(e.target.checked)}
+              />
+              Show tasks with status changes
+            </label>
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={snapshotShowStillActive}
+                onChange={(e) => setSnapshotShowStillActive(e.target.checked)}
+              />
+              Show tasks still open or in progress in both snapshots
+            </label>
+          </div>
+
+          <div className="grid gap-4 lg:grid-cols-[280px,1fr]">
+            <div className="h-64 rounded-xl border border-white/70 bg-white p-2 shadow-sm">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie data={snapshotCategoryChartData} dataKey="value" nameKey="name" outerRadius={78} innerRadius={40}>
+                    {snapshotCategoryChartData.map((entry) => (
+                      <Cell key={`snapshot-${entry.name}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="grid content-start gap-2 rounded-xl border border-white/70 bg-white p-4 text-sm shadow-sm">
+              <div className="font-medium">Manager Notes</div>
+              <div>`Status changed` shows real movement between the two exports, including progress and regressions.</div>
+              <div>`Still active in both` highlights tasks that stayed `open` or `in progress` across both snapshots and may need follow-up.</div>
+              <div>Unchanged old tasks are hidden from the snapshot tables so the view stays focused on management signals.</div>
+            </div>
+          </div>
+        </AccordionSection>
+
+        <AccordionSection
+          title="Attention Board"
+          description="Focused follow-up list based on the active snapshot filters"
+        >
+          <VirtualTable
+            rows={snapshotFilteredRows.filter((row) => row.needsAttention || row.category === "Status changed")}
+            height={420}
+            emptyText="Upload both files to compare snapshots."
+            getRowKey={(row) => `attention-${row.taskKey}`}
+            columns={[
+              { key: "category", label: "Category", render: (row) => row.category },
+              { key: "module", label: "Project", render: (row) => row.module },
+              { key: "assignee", label: "Assignee", render: (row) => row.assignee },
+              {
+                key: "taskId",
+                label: "Task ID",
+                render: (row) =>
+                  row.taskUrl ? (
+                    <a href={row.taskUrl} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">
+                      {row.taskId}
+                    </a>
+                  ) : (
+                    row.taskId
+                  )
+              },
+              { key: "taskName", label: "Task", render: (row) => row.taskName },
+              { key: "statusA", label: "Baseline", render: (row) => <StatusBadge status={row.statusA} /> },
+              { key: "statusB", label: "Latest", render: (row) => <StatusBadge status={row.statusB} /> },
+              { key: "notes", label: "Notes", render: (row) => row.notes }
+            ]}
+          />
+        </AccordionSection>
+
+        <AccordionSection
+          title="Full Snapshot Diff"
+          description="Filtered task-by-task comparison for status movement and repeated active work"
+        >
+          <VirtualTable
+            rows={snapshotFilteredRows}
+            height={560}
+            emptyText="Upload both files to start snapshot comparison."
+            getRowKey={(row) => row.taskKey}
+            columns={[
+              { key: "category", label: "Category", render: (row) => row.category },
+              { key: "project", label: "Project", render: (row) => row.module },
+              { key: "assignee", label: "Assignee", render: (row) => row.assignee },
+              {
+                key: "taskId",
+                label: "Task ID",
+                render: (row) =>
+                  row.taskUrl ? (
+                    <a href={row.taskUrl} target="_blank" rel="noreferrer" className="text-primary underline underline-offset-2">
+                      {row.taskId}
+                    </a>
+                  ) : (
+                    row.taskId
+                  )
+              },
+              { key: "taskName", label: "Task", render: (row) => row.taskName },
+              { key: "statusA", label: "Baseline", render: (row) => <StatusBadge status={row.statusA} /> },
+              { key: "statusB", label: "Latest", render: (row) => <StatusBadge status={row.statusB} /> },
+              { key: "weeksA", label: "Weeks A", render: (row) => row.weeksA },
+              { key: "weeksB", label: "Weeks B", render: (row) => row.weeksB },
+              { key: "notes", label: "Notes", render: (row) => row.notes }
+            ]}
+          />
         </AccordionSection>
       </section>
       )}
